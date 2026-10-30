@@ -1,5 +1,7 @@
 # EnterpriseRag · V2
 
+> 分支导航：当前为 **main（V2 技术路线）** · [V1（Docker 部署 / 本地 BGE）](https://github.com/tomkluas/EnterpriseRag/blob/V1/README.md) · [V2（Windows 轻量交付 / 在线 Embedding）](https://github.com/tomkluas/EnterpriseRag/blob/V2/README.md)
+
 面向个人与中小团队的企业知识库问答系统，使用 Vue 3、FastAPI、LangGraph、嵌入式 ChromaDB 和在线模型 API。
 
 **V2 定位：以 Windows 单文件程序交付的本机知识检索与问答工具。** 用户运行打包后的 `启动RAG系统.exe`，通过浏览器完成初始化、上传资料和提问；无需安装 Docker、Python、Node.js 或本地模型。开发与打包环境仍需 Python 3.11 和 Node.js 18+，模型、Embedding 与联网搜索需要访问所配置的外部 API。
@@ -9,6 +11,18 @@
 当前真实服务验证覆盖纯模型流式回答与本地向量查询；真实知识库问答曾因查询 Embedding API 连接超时未完成，外部业务数据库尚未实测。验证范围与证据见[验证](#验证)，功能边界见[已知限制](#已知限制)。
 
 ## V1 与 V2 的差异
+
+### 企业选型建议
+
+企业内部集中部署、由 IT 团队长期维护的场景，更适合以 V1 为建设基础；Windows 单机试用、演示和轻量交付，更适合 V2。两版均未完成大规模并发或高可用验收，正式上线还需落实知识库数据权限、审计、任务恢复和备份恢复验证。
+
+| 企业关注点 | V1 | V2 |
+| --- | --- | --- |
+| 数据库执行防护 | 检查单条只读 SQL 和禁用表，仍需只读数据库账号兜底 | SQL 主要检查 SELECT 前缀，禁用表 / 集合未在执行阶段完整强制校验 |
+| 删除与清理 | 知识库删除要求管理员，有处理中拦截及原件清理 | 知识库删除仅要求登录，部分清理、并发保护和失败反馈仍需完善 |
+| 真实知识库链路 | [既有记录](https://github.com/tomkluas/EnterpriseRag/blob/V1/docs/testing/interface-live-results-2026-10-29.json)包含真实入库、检索、模型回答与来源展示通过 | [既有记录](docs/testing/usability-verification-2026-10-30.json)中纯模型对话、本地向量查询通过；完整知识库问答因 Embedding 连接超时未通过，并发现历史索引不一致 |
+
+以上为分支内已有验证证据，本节整理未重新执行测试，不能据此断言容量、性能或检索质量孰优。两版均未完成真实外部业务数据库验收；知识库也尚无按部门、用户或租户强制隔离的数据权限，V1 的 `allowed_roles` 字段尚未在接口与检索中落实授权。
 
 ### 设计理念与适用场景
 
