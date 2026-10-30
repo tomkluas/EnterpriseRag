@@ -1,32 +1,25 @@
-import base64
 import os
-
+import base64
+import bcrypt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from passlib.context import CryptContext
-
-from app.core.config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.core.config import config_manager
 
 
 def hash_password(password: str) -> str:
-    if len(password.encode("utf-8")) > 72:
-        raise ValueError("密码不能超过72字节")
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    if len(plain.encode("utf-8")) > 72:
-        return False
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
-def _get_aes_key() -> bytes:
-    return bytes.fromhex(settings.encryption_key)
+def _get_key() -> bytes:
+    return bytes.fromhex(config_manager.encryption_key)
 
 
 def encrypt(plaintext: str) -> str:
-    key = _get_aes_key()
+    key = _get_key()
     aesgcm = AESGCM(key)
     nonce = os.urandom(12)
     ciphertext = aesgcm.encrypt(nonce, plaintext.encode(), None)
@@ -34,9 +27,8 @@ def encrypt(plaintext: str) -> str:
 
 
 def decrypt(token: str) -> str:
-    key = _get_aes_key()
-    data = base64.b64decode(token)
-    nonce = data[:12]
-    ciphertext = data[12:]
+    key = _get_key()
     aesgcm = AESGCM(key)
+    raw = base64.b64decode(token)
+    nonce, ciphertext = raw[:12], raw[12:]
     return aesgcm.decrypt(nonce, ciphertext, None).decode()

@@ -1,26 +1,27 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { adminApi } from '@/api/admin.js'
 
 export const useConfigStore = defineStore('config', () => {
   const llmConfigs = ref([])
-  const currentConfigId = ref(null)
+  const selectedConfigId = ref(null)
 
-  function setConfigs(configs) {
-    llmConfigs.value = configs
-    const defaultConfig = configs.find(c => c.is_default)
-    if (defaultConfig) {
-      currentConfigId.value = defaultConfig.id
+  async function fetchConfigs() {
+    try {
+      const data = await adminApi.getLLMConfigs()
+      llmConfigs.value = data
+      const def = data.find(c => c.is_default)
+      if (def && !selectedConfigId.value) {
+        selectedConfigId.value = def.id
+      }
+    } catch (e) {
+      // ignore if not admin
     }
   }
 
-  function selectConfig(configId) {
-    currentConfigId.value = configId
+  function selectConfig(id) {
+    selectedConfigId.value = id
   }
 
-  return {
-    llmConfigs,
-    currentConfigId,
-    setConfigs,
-    selectConfig,
-  }
+  return { llmConfigs, selectedConfigId, fetchConfigs, selectConfig }
 })

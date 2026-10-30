@@ -1,27 +1,16 @@
-import http from './http'
+import http from './http.js'
 
-export async function listKnowledgeBases() {
-  return http.get('/v1/knowledge/list')
-}
-
-export async function createKnowledgeBase(name, description) {
-  return http.post('/v1/knowledge/create', null, { params: { name, description } })
-}
-
-export async function uploadDocument(kbId, file) {
-  const formData = new FormData()
-  formData.append('file', file)
-  return http.post(`/v1/knowledge/${kbId}/upload`, formData, { timeout: 120000 })
-}
-
-export async function listDocuments(kbId) {
-  return http.get(`/v1/knowledge/${kbId}/documents`)
-}
-
-export async function deleteDocument(kbId, docId) {
-  return http.delete(`/v1/knowledge/${kbId}/documents/${docId}`)
-}
-
-export async function deleteKnowledgeBase(kbId) {
-  return http.delete(`/v1/knowledge/${kbId}`)
+export const knowledgeApi = {
+  list: () => http.get('/knowledge/list'),
+  create: (name, description) => http.post('/knowledge/create', { name, description }),
+  listDocs: (kbId) => http.get(`/knowledge/${kbId}/documents`),
+  upload: (kbId, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return http.post(`/knowledge/${kbId}/upload`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  deleteDoc: (kbId, docId) => http.delete(`/knowledge/${kbId}/documents/${docId}`),
+  deleteKb: (kbId) => http.delete(`/knowledge/${kbId}`),
 }

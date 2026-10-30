@@ -1,165 +1,118 @@
 import json
-from typing import Literal
-
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
-from langchain_core.messages import HumanMessage
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.exc import IntegrityError
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from typing import Optional
 
-from app.core.auth import require_admin
 from app.core.deps import get_db
-from app.core.security import encrypt, decrypt
-from app.db.crud import (
-    list_users, create_user, update_user_active,
-    list_llm_configs, create_llm_config, set_default_llm, delete_llm_config,
-    list_db_connections, create_db_connection, delete_db_connection,
-    update_schema_cache, get_db_connection, get_llm_config, get_user, get_user_by_username,
-)
+from app.core.auth import require_admin, get_current_user
+from app.core.security import encrypt, decrypt, hash_password
+from app.db import crud
 from app.db.models import User
-from app.connectors.sql_connector import SQLConnector, build_conn_string
-from app.connectors.mongo_connector import MongoConnector
+from app.models.embedding_client import resolve_embedding_model
 
-router = APIRouter(prefix="/api/v1/admin", tags=["管理"])
+router = APIRouter()
 
 
-class LLMConfigRequest(BaseModel):
-    name: str = Field(min_length=1)
-    provider: Literal["deepseek", "openai", "ollama", "custom"]
-    model_string: str = Field(min_length=1)
+# ── LLM Configs ──────────────────────────────────────────────────────────────
+
+class LLMConfigCreate(BaseModel):
+    name: str
+    provider: str
+    model_string: str = ""        # 留空则使用服务商推荐默认模型
     api_key: str = ""
-    base_url: str = ""
-    max_tokens: int = Field(default=4096, gt=0)
-    temperature: float = Field(default=0.7, ge=0, le=1)
+    max_tokens: int = 4096
+    temperature: float = 0.7
 
-
-class DBConnectionRequest(BaseModel):
-    name: str = Field(min_length=1)
-    db_type: Literal["mysql", "postgresql", "mssql", "oracle", "mongodb"]
-    host: str = Field(min_length=1)
-    port: int = Field(ge=1, le=65535)
-    user: str
-    password: str
-    database: str = Field(min_length=1)
-    blocked_tables: list[str] = Field(default_factory=list)
-
-
-class UserRequest(BaseModel):
-    username: str = Field(min_length=1, max_length=64)
-    password: str = Field(min_length=1)
-    role: Literal["user", "admin"] = "user"
-
-    @field_validator("password")
-    @classmethod
-    def validate_password_bytes(cls, value: str) -> str:
-        if len(value.encode("utf-8")) > 72:
-            raise ValueError("密码不能超过72字节")
-        return value
-
-
-# ========== LLM 配置 ==========
 
 @router.get("/llm-configs")
-def get_llm_configs(
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    configs = list_llm_configs(db)
+def list_llm_configs(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    configs = crud.list_llm_configs(db)
     return [
         {
-            "id": c.id,
-            "name": c.name,
-            "provider": c.provider,
-            "model_string": c.model_string,
-            "base_url": c.base_url,
-            "is_default": c.is_default,
-            "max_tokens": c.max_tokens,
-            "temperature": c.temperature,
-            "created_at": c.created_at,
+            "id": c.id, "name": c.name, "provider": c.provider,
+            "model_string": c.model_string, "base_url": c.base_url,
+            "is_default": c.is_default, "max_tokens": c.max_tokens,
+            "temperature": c.temperature, "created_at": c.created_at,
         }
         for c in configs
     ]
 
 
 @router.post("/llm-configs")
-def add_llm_config(
-    request: LLMConfigRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    api_key_enc = encrypt(request.api_key) if request.api_key else ""
-    config = create_llm_config(
+def create_llm_config(req: LLMConfigCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    from app.models.llm_factory import PROVIDER_DEFAULT_MODEL, PROVIDER_BASE_URL
+    if req.provider not in PROVIDER_DEFAULT_MODEL:
+        raise HTTPException(status_code=400, detail=f"不支持的服务商: {req.provider}")
+
+    model_string = req.model_string.strip() or PROVIDER_DEFAULT_MODEL[req.provider]
+
+    config = crud.create_llm_config(
         db,
-        name=request.name,
-        provider=request.provider,
-        model_string=request.model_string,
-        api_key_enc=api_key_enc,
-        base_url=request.base_url,
-        is_default=False,
-        max_tokens=request.max_tokens,
-        temperature=request.temperature,
+        id=str(uuid.uuid4()),
+        name=req.name,
+        provider=req.provider,
+        model_string=model_string,
+        api_key_enc=encrypt(req.api_key) if req.api_key else None,
+        base_url=PROVIDER_BASE_URL.get(req.provider),
+        max_tokens=req.max_tokens,
+        temperature=req.temperature,
     )
-    return {key: getattr(config, key) for key in (
-        "id", "name", "provider", "model_string", "base_url", "is_default",
-        "max_tokens", "temperature", "created_at",
-    )}
+    return config
 
 
 @router.put("/llm-configs/{config_id}/set-default")
-def set_default_model(
-    config_id: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    if not get_llm_config(db, config_id):
-        raise HTTPException(status_code=404, detail="模型配置不存在")
-    set_default_llm(db, config_id)
-    return {"message": "设置成功"}
+def set_default_llm(config_id: str, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    if not crud.get_llm_config(db, config_id):
+        raise HTTPException(status_code=404, detail="配置不存在")
+    crud.set_default_llm(db, config_id)
+    return {"ok": True}
 
 
 @router.delete("/llm-configs/{config_id}")
-def remove_llm_config(
-    config_id: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    if not get_llm_config(db, config_id):
-        raise HTTPException(status_code=404, detail="模型配置不存在")
-    delete_llm_config(db, config_id)
-    return {"message": "删除成功"}
+def delete_llm_config(config_id: str, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    crud.delete_llm_config(db, config_id)
+    return {"ok": True}
 
 
 @router.post("/llm-configs/test")
 async def test_llm_config(
-    config_id: str,
+    body: dict,
     db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
+    _: User = Depends(require_admin),
 ):
     from app.models.llm_factory import get_llm
-    if not get_llm_config(db, config_id):
-        raise HTTPException(status_code=404, detail="模型配置不存在")
+    from langchain_core.messages import HumanMessage
     try:
-        llm = get_llm(db, config_id)
-        await llm.ainvoke([HumanMessage(content="请回复 OK")], max_tokens=32)
-        return {"message": "连接成功"}
+        llm = get_llm(db, body.get("config_id"))
+        response = await llm.ainvoke([HumanMessage(content="你好，请回复'连接成功'")])
+        return {"ok": True, "response": response.content}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# ========== 数据库连接 ==========
+# ── DB Connections ────────────────────────────────────────────────────────────
+
+class DBConnCreate(BaseModel):
+    name: str
+    db_type: str
+    host: str
+    port: int
+    user: str
+    password: str
+    database: str
+    blocked_tables: list[str] = []
+
 
 @router.get("/db-connections")
-def get_db_connections(
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    conns = list_db_connections(db)
+def list_db_connections(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    conns = crud.list_db_connections(db)
     return [
         {
-            "id": c.id,
-            "name": c.name,
-            "db_type": c.db_type,
-            "is_active": c.is_active,
+            "id": c.id, "name": c.name, "db_type": c.db_type,
+            "blocked_tables": json.loads(c.blocked_tables or "[]"),
+            "schema_updated": c.schema_updated, "is_active": c.is_active,
             "created_at": c.created_at,
         }
         for c in conns
@@ -167,171 +120,175 @@ def get_db_connections(
 
 
 @router.post("/db-connections")
-def add_db_connection(
-    request: DBConnectionRequest,
-    db: Session = Depends(get_db),
-    admin_user: User = Depends(require_admin),
-):
-    name, db_type = request.name, request.db_type
-    host, port, user, password, database = request.host, request.port, request.user, request.password, request.database
-    blocked_tables = json.dumps(request.blocked_tables)
-    if db_type == "mongodb":
-        from app.connectors.mongo_connector import build_mongo_conn_string
-        h, p, u, pw, d = build_mongo_conn_string(host, port, user, password, database)
-        conn = create_db_connection(
-            db,
-            name=name,
-            db_type=db_type,
-            conn_string_enc=encrypt(json.dumps({"host": h, "port": p, "user": u, "password": pw, "database": d})),
-            blocked_tables=blocked_tables,
-        )
+def create_db_connection(req: DBConnCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    if req.db_type == "mongodb":
+        conn_string = f"mongodb://{req.user}:{req.password}@{req.host}:{req.port}/{req.database}"
     else:
-        conn_str = build_conn_string(db_type, host, port, user, password, database)
-        conn = create_db_connection(
-            db,
-            name=name,
-            db_type=db_type,
-            conn_string_enc=encrypt(conn_str),
-            blocked_tables=blocked_tables,
-        )
-    return {key: getattr(conn, key) for key in (
-        "id", "name", "db_type", "is_active", "created_at",
-    )}
+        from app.connectors.sql_connector import build_conn_string
+        conn_string = build_conn_string(req.db_type, req.host, req.port, req.user, req.password, req.database)
+
+    conn = crud.create_db_connection(
+        db,
+        id=str(uuid.uuid4()),
+        name=req.name,
+        db_type=req.db_type,
+        conn_string_enc=encrypt(conn_string),
+        blocked_tables=json.dumps(req.blocked_tables),
+    )
+    return {"id": conn.id, "name": conn.name, "db_type": conn.db_type}
 
 
 @router.delete("/db-connections/{conn_id}")
-def remove_db_connection(
-    conn_id: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    if not get_db_connection(db, conn_id):
-        raise HTTPException(status_code=404, detail="连接不存在")
-    delete_db_connection(db, conn_id)
-    return {"message": "删除成功"}
+def delete_db_connection(conn_id: str, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    crud.delete_db_connection(db, conn_id)
+    return {"ok": True}
 
 
 @router.post("/db-connections/{conn_id}/test")
-def test_db_connection(
-    conn_id: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    conn_record = get_db_connection(db, conn_id)
+def test_db_connection(conn_id: str, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    conn_record = crud.get_db_connection(db, conn_id)
     if not conn_record:
         raise HTTPException(status_code=404, detail="连接不存在")
-
-    connector = None
+    conn_string = decrypt(conn_record.conn_string_enc)
+    blocked = json.loads(conn_record.blocked_tables or "[]")
     try:
         if conn_record.db_type == "mongodb":
-            info = json.loads(decrypt(conn_record.conn_string_enc))
-            connector = MongoConnector(**info, blocked_tables=json.loads(conn_record.blocked_tables or "[]"))
+            from app.connectors.mongo_connector import MongoConnector
+            ok = MongoConnector(conn_string, blocked).test_connection()
         else:
-            conn_str = decrypt(conn_record.conn_string_enc)
-            blocked = json.loads(conn_record.blocked_tables)
-            connector = SQLConnector(conn_str, blocked)
-
-        connector.connect()
-        schema = connector.get_schema()
-        return {"message": "连接成功", "schema": schema}
+            from app.connectors.sql_connector import SQLConnector
+            ok = SQLConnector(conn_string, blocked).test_connection()
+        return {"ok": ok}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    finally:
-        if connector is not None:
-            connector.close()
 
 
 @router.post("/db-connections/{conn_id}/refresh-schema")
-def refresh_schema(
-    conn_id: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    conn_record = get_db_connection(db, conn_id)
+def refresh_schema(conn_id: str, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    conn_record = crud.get_db_connection(db, conn_id)
     if not conn_record:
         raise HTTPException(status_code=404, detail="连接不存在")
-
-    connector = None
+    conn_string = decrypt(conn_record.conn_string_enc)
+    blocked = json.loads(conn_record.blocked_tables or "[]")
     try:
         if conn_record.db_type == "mongodb":
-            info = json.loads(decrypt(conn_record.conn_string_enc))
-            connector = MongoConnector(**info, blocked_tables=json.loads(conn_record.blocked_tables or "[]"))
+            from app.connectors.mongo_connector import MongoConnector
+            schema = MongoConnector(conn_string, blocked).get_schema()
         else:
-            conn_str = decrypt(conn_record.conn_string_enc)
-            blocked = json.loads(conn_record.blocked_tables)
-            connector = SQLConnector(conn_str, blocked)
-
-        connector.connect()
-        schema = connector.get_schema()
-
-        update_schema_cache(db, conn_id, schema)
-        return {"message": "Schema 已刷新"}
+            from app.connectors.sql_connector import SQLConnector
+            schema = SQLConnector(conn_string, blocked).get_schema()
+        crud.update_schema_cache(db, conn_id, schema)
+        return {"ok": True, "tables": list(schema.keys())}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    finally:
-        if connector is not None:
-            connector.close()
 
 
-# ========== 用户管理 ==========
+# ── Users ─────────────────────────────────────────────────────────────────────
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: str = "user"
+
 
 @router.get("/users")
-def get_users(
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    users = list_users(db)
+def list_users(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    users = crud.list_users(db)
     return [
-        {
-            "id": u.id,
-            "username": u.username,
-            "role": u.role,
-            "is_active": u.is_active,
-            "created_at": u.created_at,
-        }
+        {"id": u.id, "username": u.username, "role": u.role, "is_active": u.is_active, "created_at": u.created_at}
         for u in users
     ]
 
 
 @router.post("/users")
-def add_user(
-    request: UserRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    from app.core.security import hash_password
-    import uuid
-    username, password, role = request.username, request.password, request.role
-    if get_user_by_username(db, username):
-        raise HTTPException(status_code=409, detail="用户名已存在")
-    try:
-        new_user = create_user(
-            db,
-            user_id=str(uuid.uuid4()),
-            username=username,
-            password_hash=hash_password(password),
-            role=role,
-        )
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="用户名已存在")
-    return {
-        "id": new_user.id,
-        "username": new_user.username,
-        "role": new_user.role,
-    }
+def create_user(req: UserCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    existing = crud.get_user_by_username(db, req.username)
+    if existing:
+        raise HTTPException(status_code=400, detail="用户名已存在")
+    user = crud.create_user(
+        db,
+        user_id=str(uuid.uuid4()),
+        username=req.username,
+        password_hash=hash_password(req.password),
+        role=req.role,
+    )
+    return {"id": user.id, "username": user.username, "role": user.role}
 
 
 @router.put("/users/{user_id}/toggle-active")
-def toggle_user_active(
-    user_id: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_admin),
-):
-    target = get_user(db, user_id)
-    if not target:
+def toggle_user_active(user_id: str, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    user = crud.get_user(db, user_id)
+    if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
-    if target.id == user.id and target.is_active:
-        raise HTTPException(status_code=400, detail="不能禁用当前登录用户")
-    target = update_user_active(db, user_id, not target.is_active)
-    return {"message": "操作成功", "is_active": target.is_active}
+    crud.update_user_active(db, user_id, not user.is_active)
+    return {"ok": True, "is_active": not user.is_active}
+
+
+# ── System Info（任意已登录用户可访问，非仅 admin）────────────────────────────
+
+@router.get("/system-info")
+def system_info(_: User = Depends(get_current_user)):
+    """供前端展示当前生效的搜索引擎 / Embedding 提供商"""
+    from app.core.config import config_manager
+    embedding_cfg = config_manager.get("embedding") or {}
+    search_cfg = config_manager.get("search") or {}
+    return {
+        "search_provider": search_cfg.get("provider"),
+        "embedding_provider": embedding_cfg.get("provider"),
+    }
+
+
+# ── Embedding / Search 配置（设置页二次修改用，与 Setup 向导共用同一持久化逻辑）─
+
+class EmbeddingConfigUpdate(BaseModel):
+    provider: str
+    model: str = ""
+    api_key: str = ""
+
+
+@router.get("/embedding-config")
+def get_embedding_config(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    cfg = crud.get_embedding_config(db) or {}
+    return {"provider": cfg.get("provider"), "model": cfg.get("model"), "configured": bool(cfg.get("api_key_enc"))}
+
+
+@router.put("/embedding-config")
+def update_embedding_config(
+    req: EmbeddingConfigUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    try:
+        model = resolve_embedding_model(req.provider, req.model)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if req.api_key.strip():
+        api_key_enc = encrypt(req.api_key.strip())
+    else:
+        existing = crud.get_embedding_config(db) or {}
+        if existing.get("provider") != req.provider or not existing.get("api_key_enc"):
+            raise HTTPException(status_code=400, detail="首次配置或切换 Embedding 服务商时，请输入对应的 API Key")
+        api_key_enc = existing["api_key_enc"]
+    crud.update_embedding_config(db, req.provider, model, api_key_enc)
+    return {"ok": True}
+
+
+class SearchConfigUpdate(BaseModel):
+    provider: str
+    api_key: str
+
+
+@router.get("/search-config")
+def get_search_config(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    cfg = crud.get_search_config(db) or {}
+    return {"provider": cfg.get("provider"), "configured": bool(cfg)}
+
+
+@router.put("/search-config")
+def update_search_config(
+    req: SearchConfigUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    crud.update_search_config(db, req.provider, encrypt(req.api_key))
+    return {"ok": True}

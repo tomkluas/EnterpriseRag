@@ -1,0 +1,28 @@
+{
+  "executable": "D:\\GitHub\\EnterpriseRag\\release\\启动RAG系统.exe",
+  "port": 60779,
+  "checks": [
+    {
+      "path": "/api/health",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "path": "/login",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "path": "/knowledge",
+      "status": 200,
+      "pass": true
+    }
+  ],
+  "startup_seconds": 3.672,
+  "running_before_cleanup": true
+}

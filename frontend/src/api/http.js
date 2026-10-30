@@ -1,28 +1,28 @@
 import axios from 'axios'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores/auth.js'
 
 const http = axios.create({
-  baseURL: '/api',
+  baseURL: '/api/v1',
   timeout: 30000,
 })
 
 http.interceptors.request.use(config => {
-  const authStore = useAuthStore()
-  if (authStore.token) {
-    config.headers.Authorization = `Bearer ${authStore.token}`
+  const auth = useAuthStore()
+  if (auth.token) {
+    config.headers.Authorization = `Bearer ${auth.token}`
   }
   return config
 })
 
 http.interceptors.response.use(
-  response => response.data,
-  error => {
-    if (error.response?.status === 401 && error.config?.url !== '/v1/auth/login') {
-      const authStore = useAuthStore()
-      authStore.logout()
+  res => res.data,
+  err => {
+    if (err.response?.status === 401) {
+      const auth = useAuthStore()
+      auth.logout()
       window.location.href = '/login'
     }
-    return Promise.reject(error)
+    return Promise.reject(err)
   }
 )
 

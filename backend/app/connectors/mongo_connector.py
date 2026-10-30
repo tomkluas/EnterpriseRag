@@ -1,116 +1,84 @@
 import json
-from typing import Optional
-
+import re
+import asyncio
 from pymongo import MongoClient
-from pymongo.database import Database
-
 from app.connectors.base import BaseConnector
 
 
 class MongoConnector(BaseConnector):
-    """MongoDB 连接器"""
+    def __init__(self, conn_string: str, blocked_tables: list[str] = None):
+        self.conn_string = conn_string
+        self.blocked_tables = blocked_tables or []
+        self._client = None
 
-    def __init__(self, host: str, port: int, user: str, password: str, database: str, blocked_tables: Optional[list] = None):
-        self._host = host
-        self._port = port
-        self._user = user
-        self._password = password
-        self._database = database
-        self._blocked_tables = blocked_tables or []
-        self._client: Optional[MongoClient] = None
-        self._db: Optional[Database] = None
-
-    def connect(self) -> Database:
+    def _get_client(self):
         if self._client is None:
-            options = {"username": self._user, "password": self._password, "authSource": self._database} if self._user else {}
-            self._client = MongoClient(self._host, self._port, serverSelectionTimeoutMS=5000, **options)
-            self._db = self._client[self._database]
-        return self._db
+            self._client = MongoClient(self.conn_string, serverSelectionTimeoutMS=5000, connectTimeoutMS=5000, socketTimeoutMS=15000)
+        return self._client
 
-    def execute(self, query: str) -> list[dict]:
-        """执行 MQL 查询（仅支持 find 和 aggregate）"""
+    def _get_db(self):
+        client = self._get_client()
+        # Parse DB name from conn string
+        match = re.search(r"/([^/?]+)(\?|$)", self.conn_string)
+        db_name = match.group(1) if match else "admin"
+        return client[db_name]
+
+    def test_connection(self) -> bool:
         try:
-            mql = json.loads(query)
-        except json.JSONDecodeError:
-            raise ValueError("MongoDB 查询必须是有效的 JSON")
-
-        if not isinstance(mql, dict):
-            raise ValueError("MongoDB 查询必须是 JSON 对象")
-        cmd = mql.get("command", "")
-        collection_name = mql.get("collection", "")
-        filter_cond = mql.get("filter", {})
-
-        if not collection_name:
-            raise ValueError("必须指定 collection")
-        if collection_name in self._blocked_tables:
-            raise ValueError("查询包含禁止访问的集合")
-        if cmd not in {"find", "aggregate"}:
-            raise ValueError(f"不支持的 MongoDB 命令: {cmd}")
-        def validate(value):
-            if isinstance(value, dict):
-                for key, nested in value.items():
-                    if key in {"$out", "$merge"}:
-                        raise ValueError("仅允许只读 MongoDB 查询")
-                    if key in {"from", "coll", "$unionWith"} and isinstance(nested, str) and nested in self._blocked_tables:
-                        raise ValueError("查询包含禁止访问的集合")
-                    validate(nested)
-            elif isinstance(value, list):
-                for nested in value:
-                    validate(nested)
-        validate(mql)
-
-        db = self.connect()
-        collection = db[collection_name]
-
-        if cmd == "find":
-            results = list(collection.find(filter_cond).limit(100))
-            for r in results:
-                r["_id"] = str(r["_id"])
-            return results
-        elif cmd == "aggregate":
-            pipeline = mql.get("pipeline", [])
-            if not isinstance(pipeline, list):
-                raise ValueError("pipeline 必须是数组")
-            results = list(collection.aggregate(pipeline + [{"$limit": 100}]))
-            for r in results:
-                if "_id" in r:
-                    r["_id"] = str(r["_id"])
-            return results
-        else:
-            raise ValueError(f"不支持的 MongoDB 命令: {cmd}")
+            self._get_client().admin.command("ping")
+            return True
+        except Exception:
+            return False
 
     def get_schema(self) -> dict:
-        db = self.connect()
+        db = self._get_db()
         schema = {}
-
-        for collection_name in db.list_collection_names():
-            if collection_name in self._blocked_tables:
+        for name in db.list_collection_names():
+            if name in self.blocked_tables:
                 continue
-            collection = db[collection_name]
-            # 取一条样本推断字段
-            sample = collection.find_one()
+            sample = db[name].find_one()
             if sample:
-                fields = {}
-                for key, value in sample.items():
-                    if key != "_id":
-                        fields[key] = type(value).__name__
-                schema[collection_name] = {"fields": fields}
-
+                schema[name] = list(sample.keys())
+            else:
+                schema[name] = []
         return schema
 
-    def close(self) -> None:
-        if self._client:
-            self._client.close()
-            self._client = None
-            self._db = None
+    def query(self, nl_query: str, schema: dict, llm) -> list[dict]:
+        response = llm.invoke(self._messages(nl_query, schema))
+        return self._execute(response.content)
 
+    async def aquery(self, nl_query: str, schema: dict, llm) -> list[dict]:
+        response = await llm.ainvoke(self._messages(nl_query, schema))
+        return await asyncio.to_thread(self._execute_and_close, response.content)
 
-def build_mongo_conn_string(
-    host: str,
-    port: int,
-    user: str,
-    password: str,
-    database: str,
-) -> tuple:
-    """返回 (host, port, user, password, database)"""
-    return host, port, user, password, database
+    def _execute_and_close(self, content):
+        try:
+            return self._execute(content)
+        finally:
+            if self._client is not None:
+                self._client.close()
+                self._client = None
+
+    def _messages(self, nl_query, schema):
+        schema_str = json.dumps(schema, ensure_ascii=False, indent=2)
+        prompt = (
+            f"MongoDB 集合结构如下：\n{schema_str}\n\n"
+            f"请将以下问题转换为 MongoDB find() 查询（输出 JSON 格式，包含 collection、filter、projection 三个字段）：\n{nl_query}"
+        )
+        from langchain_core.messages import HumanMessage
+        return [HumanMessage(content=prompt)]
+
+    def _execute(self, content):
+        content = content.strip()
+        json_match = re.search(r"```(?:json)?\s*(.*?)\s*```", content, re.DOTALL)
+        if json_match:
+            content = json_match.group(1).strip()
+        mql = json.loads(content)
+        db = self._get_db()
+        col = db[mql["collection"]]
+        cursor = col.find(mql.get("filter", {}), mql.get("projection", None)).max_time_ms(15000).limit(50)
+        results = []
+        for doc in cursor:
+            doc.pop("_id", None)
+            results.append(doc)
+        return results

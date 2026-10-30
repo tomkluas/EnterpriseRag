@@ -1,9 +1,6 @@
-import http from './http'
+import http from './http.js'
 
-export async function login(username, password) {
-  return http.post('/v1/auth/login', { username, password })
-}
-
-export async function getMe() {
-  return http.get('/v1/auth/me')
+export const authApi = {
+  login: (username, password) => http.post('/auth/login', { username, password }),
+  me: () => http.get('/auth/me'),
 }

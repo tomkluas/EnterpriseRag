@@ -1,49 +1,42 @@
 import hashlib
 import os
 import uuid
-
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, BackgroundTasks
+import asyncio
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
-from app.core.auth import get_current_user
-from app.core.config import settings
 from app.core.deps import get_db
-from app.db.crud import list_kbs, get_kb, create_kb, delete_kb as db_delete_kb
-from app.db.crud import create_doc, get_doc, list_docs_by_kb
-from app.db.models import User, Document
-from app.pipeline.embedder import process_document, delete_document
-from app.models.bge_model import ensure_collection
+from app.core.auth import get_current_user
+from app.core.config import config_manager
+from app.core.paths import get_data_dir
+from app.db import crud
+from app.db.models import User
+from app.vectorstore.chroma_store import delete_collection
 
-router = APIRouter(prefix="/api/v1/knowledge", tags=["知识库"])
-
-
-def _ensure_upload_dir():
-    os.makedirs(settings.upload_dir, exist_ok=True)
+router = APIRouter()
 
 
-def _compute_file_hash(file_path: str) -> str:
-    md5 = hashlib.md5()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            md5.update(chunk)
-    return md5.hexdigest()
+class KBCreate(BaseModel):
+    name: str
+    description: str = ""
+
+
+def _upload_dir() -> str:
+    upload_dir = get_data_dir() / config_manager.upload_dir_name
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    return str(upload_dir)
 
 
 @router.get("/list")
-def list_knowledge_bases(
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-) -> list:
-    kbs = list_kbs(db)
-    completed_counts = dict(db.query(Document.kb_id, func.count(Document.id))
-                            .filter(Document.status == "done").group_by(Document.kb_id).all())
+def list_kbs(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    kbs = crud.list_kbs(db)
     return [
         {
             "id": kb.id,
             "name": kb.name,
             "description": kb.description,
-            "doc_count": completed_counts.get(kb.id, 0),
+            "doc_count": kb.doc_count,
             "created_at": kb.created_at,
         }
         for kb in kbs
@@ -51,142 +44,118 @@ def list_knowledge_bases(
 
 
 @router.post("/create")
-def create_knowledge_base(
-    name: str,
-    description: str = "",
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    name = name.strip()
-    if not name or len(name) > 128:
-        raise HTTPException(status_code=400, detail="知识库名称不能为空且不能超过128个字符")
-    kb = create_kb(db, name=name, description=description)
-    try:
-        ensure_collection(kb.id)
-    except Exception as exc:
-        db_delete_kb(db, kb.id)
-        raise HTTPException(status_code=503, detail="向量服务暂不可用") from exc
+def create_kb(req: KBCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    kb_id = str(uuid.uuid4())
+    kb = crud.create_kb(db, id=kb_id, name=req.name, description=req.description)
     return kb
 
 
 @router.post("/{kb_id}/upload")
 async def upload_document(
     kb_id: str,
-    file: UploadFile,
     background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    kb = get_kb(db, kb_id)
+    kb = crud.get_kb(db, kb_id)
     if not kb:
         raise HTTPException(status_code=404, detail="知识库不存在")
 
-    filename = file.filename or ""
-    suffix = os.path.splitext(filename)[1].lower()
-    if not filename or "/" in filename or "\\" in filename or len(filename) > 256:
-        raise HTTPException(status_code=400, detail="无效的文件名")
-    if suffix not in {".pdf", ".docx", ".xlsx", ".txt", ".md"}:
-        raise HTTPException(status_code=400, detail="不支持的文件格式")
-    _ensure_upload_dir()
+    # 文件大小检查
+    content = await file.read()
+    max_size = config_manager.max_file_size_mb * 1024 * 1024
+    if len(content) > max_size:
+        raise HTTPException(status_code=413, detail=f"文件超过 {config_manager.max_file_size_mb}MB 限制")
 
-    # 保存文件
-    file_path = os.path.join(settings.upload_dir, f"{uuid.uuid4().hex}{suffix}")
-    try:
-        with open(file_path, "xb") as buffer:
-            written = 0
-            while chunk := file.file.read(1024 * 1024):
-                written += len(chunk)
-                if written > settings.max_file_size_mb * 1024 * 1024:
-                    raise HTTPException(status_code=413, detail="文件超过大小限制")
-                buffer.write(chunk)
-        file_size = os.path.getsize(file_path)
-        if not file_size:
-            raise HTTPException(status_code=400, detail="文件不能为空")
-        doc = create_doc(
-            db, kb_id=kb_id, filename=filename, file_path=file_path,
-            file_hash=_compute_file_hash(file_path), file_size=file_size, status="pending",
-        )
-    except Exception:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        raise
+    file_hash = hashlib.md5(content).hexdigest()
+    upload_dir = _upload_dir()
 
-    background_tasks.add_task(process_document, doc.id, kb_id, file_path)
+    doc_id = str(uuid.uuid4())
+    save_path = os.path.join(upload_dir, f"{doc_id}_{file.filename}")
+    with open(save_path, "wb") as f:
+        f.write(content)
 
-    return {"doc_id": doc.id, "filename": file.filename, "status": "pending"}
+    doc = crud.create_doc(
+        db,
+        id=doc_id,
+        kb_id=kb_id,
+        filename=file.filename,
+        file_path=save_path,
+        file_hash=file_hash,
+        file_size=len(content),
+        status="pending",
+    )
+
+    # 后台处理
+    from app.db.database import SessionLocal
+    from app.pipeline.embedder import process_document
+    from app.core.logging_config import get_logger
+
+    bg_logger = get_logger("api.knowledge.upload")
+
+    def run_process():
+        bg_db = SessionLocal()
+        try:
+            asyncio.run(process_document(doc_id, kb_id, save_path, bg_db))
+        except Exception as e:
+            # 兜底：process_document 内部已有 try/except 会把状态置为 failed，
+            # 这里捕获的是更外层的意外（比如 asyncio.run 本身出问题），
+            # 防止文档状态永远卡在 processing、用户在界面上看不到任何反馈
+            bg_logger.error(f"后台任务异常 (doc_id={doc_id}): {e}", exc_info=True)
+            try:
+                crud.update_doc_status(bg_db, doc_id, "failed", error_msg=f"后台任务异常: {e}")
+            except Exception:
+                pass   # 连状态更新都失败就放弃，至少日志文件里已经记录了
+        finally:
+            bg_db.close()
+
+    background_tasks.add_task(run_process)
+
+    return {"doc_id": doc_id, "filename": file.filename, "status": "pending"}
 
 
 @router.get("/{kb_id}/documents")
-def list_documents(
-    kb_id: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    if not get_kb(db, kb_id):
-        raise HTTPException(status_code=404, detail="知识库不存在")
-    docs = list_docs_by_kb(db, kb_id)
+def list_documents(kb_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    docs = crud.list_docs_by_kb(db, kb_id)
     return [
         {
-            "id": doc.id,
-            "filename": doc.filename,
-            "status": doc.status,
-            "chunk_count": doc.chunk_count,
-            "file_size": doc.file_size,
-            "created_at": doc.created_at,
-            "error_msg": doc.error_msg,
+            "id": d.id,
+            "filename": d.filename,
+            "status": d.status,
+            "chunk_count": d.chunk_count,
+            "file_size": d.file_size,
+            "created_at": d.created_at,
+            "error_msg": d.error_msg,
         }
-        for doc in docs
+        for d in docs
     ]
 
 
 @router.delete("/{kb_id}/documents/{doc_id}")
-async def delete_document_endpoint(
+async def delete_document(
     kb_id: str,
     doc_id: str,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    doc = get_doc(db, doc_id)
+    from app.pipeline.embedder import delete_document as _delete
+    doc = crud.get_doc(db, doc_id)
     if not doc or doc.kb_id != kb_id:
-        raise HTTPException(status_code=404, detail="文档不存在")
-    if doc.status == "processing":
-        raise HTTPException(status_code=409, detail="文档正在处理中，请稍后删除")
-
-    # 同步删除向量
-    try:
-        await delete_document(doc_id, kb_id)
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail="文档清理失败，请稍后重试") from exc
-
-    return {"message": "删除成功"}
+        raise HTTPException(status_code=404, detail="文档不存在或不属于该知识库")
+    await _delete(doc_id, kb_id, db)
+    return {"ok": True}
 
 
 @router.delete("/{kb_id}")
-def delete_knowledge_base(
+async def delete_kb(
     kb_id: str,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="需要管理员权限")
-
-    kb = get_kb(db, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="知识库不存在")
-
-    docs = list_docs_by_kb(db, kb_id)
-    if any(doc.status == "processing" for doc in docs):
-        raise HTTPException(status_code=409, detail="知识库中有文档正在处理中，请稍后删除")
-    # 向量服务失败时保留数据库记录，以便重试。
-    from app.models.bge_model import get_qdrant
-    client = get_qdrant()
-    try:
-        client.delete_collection(kb_id)
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail="向量清理失败，请稍后重试") from exc
-    from app.pipeline.embedder import remove_uploaded_file
+    docs = crud.list_docs_by_kb(db, kb_id)
     for doc in docs:
-        remove_uploaded_file(doc.file_path)
-    db_delete_kb(db, kb_id)
-
-    return {"message": "删除成功"}
+        crud.delete_doc(db, doc.id)
+    delete_collection(kb_id)
+    crud.delete_kb(db, kb_id)
+    return {"ok": True}

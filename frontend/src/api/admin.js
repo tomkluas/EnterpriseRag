@@ -1,53 +1,31 @@
-import http from './http'
+import http from './http.js'
 
-export async function getLLMConfigs() {
-  return http.get('/v1/admin/llm-configs')
-}
+export const adminApi = {
+  // LLM Configs
+  getLLMConfigs: () => http.get('/admin/llm-configs'),
+  createLLMConfig: (data) => http.post('/admin/llm-configs', data),
+  setDefaultLLM: (id) => http.put(`/admin/llm-configs/${id}/set-default`),
+  deleteLLMConfig: (id) => http.delete(`/admin/llm-configs/${id}`),
+  testLLMConfig: (configId) => http.post('/admin/llm-configs/test', { config_id: configId }),
 
-export async function createLLMConfig(data) {
-  return http.post('/v1/admin/llm-configs', data)
-}
+  // DB Connections
+  getDBConnections: () => http.get('/admin/db-connections'),
+  createDBConnection: (data) => http.post('/admin/db-connections', data),
+  deleteDBConnection: (id) => http.delete(`/admin/db-connections/${id}`),
+  testDBConnection: (id) => http.post(`/admin/db-connections/${id}/test`),
+  refreshSchema: (id) => http.post(`/admin/db-connections/${id}/refresh-schema`),
 
-export async function setDefaultLLMConfig(configId) {
-  return http.put(`/v1/admin/llm-configs/${configId}/set-default`)
-}
+  // Users
+  getUsers: () => http.get('/admin/users'),
+  createUser: (data) => http.post('/admin/users', data),
+  toggleUserActive: (id) => http.put(`/admin/users/${id}/toggle-active`),
 
-export async function deleteLLMConfig(configId) {
-  return http.delete(`/v1/admin/llm-configs/${configId}`)
-}
+  // System Info
+  getSystemInfo: () => http.get('/admin/system-info'),
 
-export async function testLLMConfig(configId) {
-  return http.post('/v1/admin/llm-configs/test', null, { params: { config_id: configId } })
-}
-
-export async function getDBConnections() {
-  return http.get('/v1/admin/db-connections')
-}
-
-export async function createDBConnection(data) {
-  return http.post('/v1/admin/db-connections', data)
-}
-
-export async function deleteDBConnection(connId) {
-  return http.delete(`/v1/admin/db-connections/${connId}`)
-}
-
-export async function testDBConnection(connId) {
-  return http.post(`/v1/admin/db-connections/${connId}/test`)
-}
-
-export async function refreshSchema(connId) {
-  return http.post(`/v1/admin/db-connections/${connId}/refresh-schema`)
-}
-
-export async function getUsers() {
-  return http.get('/v1/admin/users')
-}
-
-export async function createUser(username, password, role) {
-  return http.post('/v1/admin/users', { username, password, role })
-}
-
-export async function toggleUserActive(userId) {
-  return http.put(`/v1/admin/users/${userId}/toggle-active`)
+  // Embedding / Search 系统设置（设置页二次修改用）
+  getEmbeddingConfig: () => http.get('/admin/embedding-config'),
+  updateEmbeddingConfig: (data) => http.put('/admin/embedding-config', data),
+  getSearchConfig: () => http.get('/admin/search-config'),
+  updateSearchConfig: (data) => http.put('/admin/search-config', data),
 }

@@ -5,3 +5,26 @@ backend/.env
 __pycache__/
 .venv/
 node_modules/
+
+# Python
+*.pyc
+*.egg-info/
+
+# 用户数据（运行时生成，不提交）
+data/
+backend/data/
+*.log
+
+# 前端
+frontend/dist/
+backend/frontend_dist/
+
+# PyInstaller 打包产物
+backend/build/
+backend/dist/
+build/
+release/
+*.spec.bak
+
+# 系统文件
+.DS_Store

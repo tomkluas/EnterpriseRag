@@ -1,284 +1,393 @@
 <template>
-  <div class="admin-layout">
-    <header class="admin-header">
-      <h1>管理后台</h1>
-      <AppNavigation />
-    </header>
-
-    <div class="admin-content">
-      <p v-if="error" role="alert" class="request-error">{{ error }}</p>
+  <div class="chat-layout">
+    <ChatSidebar />
+    <div class="admin-main">
+      <div class="admin-header"><h2>⚙️ 系统管理</h2></div>
       <div class="tabs">
-        <button :disabled="busy" :class="{ active: tab === 'llm' }" @click="tab = 'llm'">模型配置</button>
-        <button :disabled="busy" :class="{ active: tab === 'db' }" @click="tab = 'db'">数据库连接</button>
-        <button :disabled="busy" :class="{ active: tab === 'users' }" @click="tab = 'users'">用户管理</button>
+        <button v-for="t in tabs" :key="t.key" :class="{ active: activeTab === t.key }" @click="activeTab = t.key">
+          {{ t.label }}
+        </button>
       </div>
 
-      <div v-if="tab === 'llm'" class="tab-content">
-        <button :disabled="busy" @click="showLLMForm = true">添加模型配置</button>
-        <div v-if="showLLMForm" class="form-modal">
-          <input v-model="llmForm.name" placeholder="名称" />
-          <input v-model="llmForm.provider" placeholder="Provider" />
-          <input v-model="llmForm.model_string" placeholder="模型名" />
-          <input v-model="llmForm.api_key" placeholder="API Key" type="password" />
-          <input v-model="llmForm.base_url" placeholder="Base URL" />
-          <div class="modal-actions">
-            <button :disabled="busy" @click="createLLM">创建</button>
-            <button :disabled="busy" @click="showLLMForm = false">取消</button>
+      <!-- LLM Configs -->
+      <div v-if="activeTab === 'llm'" class="tab-content">
+        <div class="section-header">
+          <h3>模型配置</h3>
+          <button @click="showLLMForm = true">＋ 新增</button>
+        </div>
+        <table>
+          <thead><tr><th>名称</th><th>提供商</th><th>模型</th><th>默认</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="c in llmConfigs" :key="c.id">
+              <td>{{ c.name }}</td>
+              <td>{{ c.provider }}</td>
+              <td>{{ c.model_string }}</td>
+              <td>{{ c.is_default ? '✅' : '' }}</td>
+              <td class="actions">
+                <button @click="setDefault(c.id)">设为默认</button>
+                <button @click="testLLM(c.id)">测试</button>
+                <button class="danger" @click="deleteLLM(c.id)">删除</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- LLM Form Modal -->
+        <div v-if="showLLMForm" class="modal-overlay" @click.self="showLLMForm = false">
+          <div class="modal">
+            <h3>新增模型配置</h3>
+            <label>显示名称</label><input v-model="llmForm.name" placeholder="例：日常问答用" />
+            <label>提供商</label>
+            <select v-model="llmForm.provider" @change="onLLMProviderChange">
+              <option value="zhipu">智谱AI</option>
+              <option value="qwen">通义千问</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="doubao">豆包</option>
+              <option value="moonshot">月之暗面</option>
+            </select>
+            <label>模型标识</label><input v-model="llmForm.model_string" placeholder="留空使用推荐模型" />
+            <label>API Key</label><input v-model="llmForm.api_key" type="password" placeholder="粘贴您的 API Key" />
+            <label>最大 Token</label><input v-model.number="llmForm.max_tokens" type="number" />
+            <label>Temperature</label><input v-model.number="llmForm.temperature" type="number" step="0.1" min="0" max="2" />
+            <div class="modal-actions">
+              <button @click="showLLMForm = false">取消</button>
+              <button class="primary" @click="saveLLM">保存</button>
+            </div>
           </div>
         </div>
-        <div v-for="cfg in llmConfigs" :key="cfg.id" class="item-card">
-          <span>{{ cfg.name }} - {{ cfg.model_string }}</span>
-          <span v-if="cfg.is_default">默认</span>
-          <button :disabled="busy" @click="setDefault(cfg.id)">设为默认</button>
-          <button :disabled="busy" @click="testLLM(cfg.id)">测试</button>
-          <button :disabled="busy" @click="deleteLLM(cfg.id)">删除</button>
-        </div>
       </div>
 
-      <div v-if="tab === 'db'" class="tab-content">
-        <button :disabled="busy" @click="showDBForm = true">添加数据库连接</button>
-        <div v-if="showDBForm" class="form-modal">
-          <input v-model="dbForm.name" placeholder="名称" />
-          <input v-model="dbForm.db_type" placeholder="类型(mysql/postgresql/mssql/oracle/mongodb)" />
-          <input v-model="dbForm.host" placeholder="Host" />
-          <input v-model.number="dbForm.port" placeholder="Port" type="number" />
-          <input v-model="dbForm.user" placeholder="User" />
-          <input v-model="dbForm.password" placeholder="Password" type="password" />
-          <input v-model="dbForm.database" placeholder="Database" />
-          <div class="modal-actions">
-            <button :disabled="busy" @click="createDB">创建</button>
-            <button :disabled="busy" @click="showDBForm = false">取消</button>
+      <!-- DB Connections -->
+      <div v-if="activeTab === 'db'" class="tab-content">
+        <div class="section-header">
+          <h3>数据库连接</h3>
+          <button @click="showDBForm = true">＋ 新增</button>
+        </div>
+        <table>
+          <thead><tr><th>名称</th><th>类型</th><th>Schema更新</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="c in dbConnections" :key="c.id">
+              <td>{{ c.name }}</td>
+              <td>{{ c.db_type }}</td>
+              <td>{{ c.schema_updated ? c.schema_updated.slice(0, 10) : '-' }}</td>
+              <td class="actions">
+                <button @click="testDB(c.id)">测试</button>
+                <button @click="refreshSchema(c.id)">刷新 Schema</button>
+                <button class="danger" @click="deleteDB(c.id)">删除</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- DB Form Modal -->
+        <div v-if="showDBForm" class="modal-overlay" @click.self="showDBForm = false">
+          <div class="modal">
+            <h3>新增数据库连接</h3>
+            <label>名称</label><input v-model="dbForm.name" placeholder="业务数据库" />
+            <label>类型</label>
+            <select v-model="dbForm.db_type">
+              <option value="mysql">MySQL</option>
+              <option value="postgresql">PostgreSQL</option>
+              <option value="mssql">SQL Server</option>
+              <option value="oracle">Oracle</option>
+              <option value="mongodb">MongoDB</option>
+            </select>
+            <label>主机</label><input v-model="dbForm.host" placeholder="localhost" />
+            <label>端口</label><input v-model.number="dbForm.port" type="number" />
+            <label>用户名</label><input v-model="dbForm.user" />
+            <label>密码</label><input v-model="dbForm.password" type="password" />
+            <label>数据库名</label><input v-model="dbForm.database" />
+            <div class="modal-actions">
+              <button @click="showDBForm = false">取消</button>
+              <button class="primary" @click="saveDB">保存</button>
+            </div>
           </div>
         </div>
-        <div v-for="conn in dbConnections" :key="conn.id" class="item-card">
-          <span>{{ conn.name }} - {{ conn.db_type }}</span>
-          <span :class="{ active: conn.is_active }">{{ conn.is_active ? '活跃' : '未激活' }}</span>
-          <button :disabled="busy" @click="testDB(conn.id)">测试</button>
-          <button :disabled="busy" @click="refreshSchema(conn.id)">刷新Schema</button>
-          <button :disabled="busy" @click="deleteDB(conn.id)">删除</button>
+      </div>
+
+      <!-- Users -->
+      <div v-if="activeTab === 'users'" class="tab-content">
+        <div class="section-header">
+          <h3>用户管理</h3>
+          <button @click="showUserForm = true">＋ 新增用户</button>
+        </div>
+        <table>
+          <thead><tr><th>用户名</th><th>角色</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="u in users" :key="u.id">
+              <td>{{ u.username }}</td>
+              <td>{{ u.role }}</td>
+              <td><span :class="u.is_active ? 'active-badge' : 'inactive-badge'">{{ u.is_active ? '启用' : '禁用' }}</span></td>
+              <td>{{ u.created_at?.slice(0, 10) }}</td>
+              <td class="actions">
+                <button @click="toggleUser(u.id)">{{ u.is_active ? '禁用' : '启用' }}</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div v-if="showUserForm" class="modal-overlay" @click.self="showUserForm = false">
+          <div class="modal">
+            <h3>新增用户</h3>
+            <label>用户名</label><input v-model="userForm.username" />
+            <label>密码</label><input v-model="userForm.password" type="password" />
+            <label>角色</label>
+            <select v-model="userForm.role">
+              <option value="user">普通用户</option>
+              <option value="admin">管理员</option>
+            </select>
+            <div class="modal-actions">
+              <button @click="showUserForm = false">取消</button>
+              <button class="primary" @click="saveUser">保存</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div v-if="tab === 'users'" class="tab-content">
-        <button :disabled="busy" @click="showUserForm = true">添加用户</button>
-        <div v-if="showUserForm" class="form-modal">
-          <input v-model="userForm.username" placeholder="用户名" />
-          <input v-model="userForm.password" placeholder="密码" type="password" />
-          <select v-model="userForm.role">
-            <option value="user">用户</option>
-            <option value="admin">管理员</option>
+      <!-- System Settings -->
+      <div v-if="activeTab === 'system'" class="tab-content">
+        <div class="section-header">
+          <h3>Embedding 服务（知识库检索依赖）</h3>
+        </div>
+        <div class="settings-body">
+          <p class="current-status">
+            当前：{{ embeddingInfo.configured ? `${providerLabel(embeddingInfo.provider)} / ${embeddingInfo.model}（已配置）` : '未配置' }}
+          </p>
+          <label>服务商</label>
+          <select v-model="embeddingForm.provider" @change="embeddingForm.model = ''; embeddingForm.api_key = ''">
+            <option value="zhipu">智谱AI</option>
+            <option value="qwen">通义千问</option>
           </select>
-          <div class="modal-actions">
-            <button :disabled="busy" @click="createUser">创建</button>
-            <button :disabled="busy" @click="showUserForm = false">取消</button>
-          </div>
+          <label>模型名（留空使用默认）</label>
+          <input v-model="embeddingForm.model" :placeholder="embeddingForm.provider === 'qwen' ? 'text-embedding-v3（默认）' : 'embedding-3（默认）'" />
+          <label>API Key（留空表示不修改现有配置）</label>
+          <input v-model="embeddingForm.api_key" type="password" placeholder="重新输入以更新" />
+          <button class="primary" style="margin-top:10px" @click="saveEmbeddingConfig">保存</button>
         </div>
-        <div v-for="u in users" :key="u.id" class="item-card">
-          <span>{{ u.username }} ({{ u.role }})</span>
-          <span>{{ u.is_active ? '激活' : '禁用' }}</span>
-          <button :disabled="busy" @click="toggleUser(u.id)">切换状态</button>
+
+        <div class="section-header" style="margin-top:24px">
+          <h3>联网搜索服务（可选）</h3>
+        </div>
+        <div class="settings-body">
+          <p class="current-status">
+            当前：{{ searchInfo.configured ? `${providerLabel(searchInfo.provider)}（已配置）` : '未配置' }}
+          </p>
+          <label>服务商</label>
+          <select v-model="searchForm.provider">
+            <option value="bocha">博查</option>
+            <option value="tavily">Tavily</option>
+          </select>
+          <label>API Key（留空表示不修改现有配置）</label>
+          <input v-model="searchForm.api_key" type="password" placeholder="重新输入以更新" />
+          <button class="primary" style="margin-top:10px" @click="saveSearchConfig">保存</button>
         </div>
       </div>
+
+      <!-- Status message -->
+      <div v-if="statusMsg" class="status-toast" :class="statusType">{{ statusMsg }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { errorMessage } from '@/utils/errors'
-import AppNavigation from '@/components/AppNavigation.vue'
-import * as adminApi from '@/api/admin'
+import ChatSidebar from '@/components/ChatSidebar.vue'
+import { adminApi } from '@/api/admin.js'
 
-const busy = ref(false)
-const error = ref('')
-async function run(action) {
-  if (busy.value) return
-  busy.value = true
-  error.value = ''
-  try { await action() } catch (e) { error.value = errorMessage(e) } finally { busy.value = false }
-}
+const activeTab = ref('llm')
+const tabs = [
+  { key: 'llm', label: '🤖 模型配置' },
+  { key: 'db', label: '🗄️ 数据库连接' },
+  { key: 'users', label: '👥 用户管理' },
+  { key: 'system', label: '⚙️ 系统设置' },
+]
 
-const tab = ref('llm')
 const llmConfigs = ref([])
 const dbConnections = ref([])
 const users = ref([])
-
 const showLLMForm = ref(false)
 const showDBForm = ref(false)
 const showUserForm = ref(false)
+const statusMsg = ref('')
+const statusType = ref('ok')
 
-const llmForm = ref({ name: '', provider: '', model_string: '', api_key: '', base_url: '' })
-const dbForm = ref({ name: '', db_type: '', host: '', port: 3306, user: '', password: '', database: '' })
+const llmForm = ref({ name: '', provider: 'zhipu', model_string: '', api_key: '', max_tokens: 4096, temperature: 0.7 })
+const dbForm = ref({ name: '', db_type: 'mysql', host: 'localhost', port: 3306, user: '', password: '', database: '' })
 const userForm = ref({ username: '', password: '', role: 'user' })
 
-async function loadData() {
-  llmConfigs.value = await adminApi.getLLMConfigs()
-  dbConnections.value = await adminApi.getDBConnections()
-  users.value = await adminApi.getUsers()
+const embeddingForm = ref({ provider: 'zhipu', model: '', api_key: '' })
+const searchForm = ref({ provider: 'bocha', api_key: '' })
+const embeddingInfo = ref({ provider: '', configured: false })
+const searchInfo = ref({ provider: '', configured: false })
+
+const PROVIDER_LABELS = { zhipu: '智谱AI', qwen: '通义千问', deepseek: 'DeepSeek', doubao: '豆包', moonshot: '月之暗面', bocha: '博查', tavily: 'Tavily' }
+function providerLabel(key) { return PROVIDER_LABELS[key] || key || '-' }
+
+function onLLMProviderChange() {
+  llmForm.value.model_string = ''   // 切换服务商时清空，后端会用该服务商的推荐默认模型
 }
 
-async function createLLM() {
-  await run(async () => {
-    if (!llmForm.value.name.trim() || !llmForm.value.provider.trim() || !llmForm.value.model_string.trim()) throw new Error('请填写名称、Provider和模型名')
-    await adminApi.createLLMConfig(llmForm.value)
-    showLLMForm.value = false
-    llmForm.value = { name: '', provider: '', model_string: '', api_key: '', base_url: '' }
-    await loadData()
-  })
+onMounted(async () => {
+  await Promise.all([loadLLM(), loadDB(), loadUsers(), loadEmbeddingInfo(), loadSearchInfo()])
+})
+
+async function loadLLM() { llmConfigs.value = await adminApi.getLLMConfigs() }
+async function loadDB() { dbConnections.value = await adminApi.getDBConnections() }
+async function loadUsers() { users.value = await adminApi.getUsers() }
+async function loadEmbeddingInfo() {
+  const info = await adminApi.getEmbeddingConfig()
+  embeddingInfo.value = info
+  if (info.provider) embeddingForm.value.provider = info.provider
+  embeddingForm.value.model = info.model || ''
+}
+async function loadSearchInfo() {
+  const info = await adminApi.getSearchConfig()
+  searchInfo.value = info
+  if (info.provider) searchForm.value.provider = info.provider
 }
 
+async function saveEmbeddingConfig() {
+  if (!embeddingForm.value.api_key.trim() && (!embeddingInfo.value.configured || embeddingForm.value.provider !== embeddingInfo.value.provider)) {
+    toast('请输入 API Key', 'err')
+    return
+  }
+  try {
+    await adminApi.updateEmbeddingConfig({ ...embeddingForm.value })
+    await loadEmbeddingInfo()
+    embeddingForm.value.api_key = ''
+    toast('已保存')
+  } catch (e) {
+    toast(e.response?.data?.detail || '保存失败', 'err')
+  }
+}
+
+async function saveSearchConfig() {
+  if (!searchForm.value.api_key) {
+    toast('请输入 API Key', 'err')
+    return
+  }
+  try {
+    await adminApi.updateSearchConfig({ ...searchForm.value })
+    await loadSearchInfo()
+    searchForm.value.api_key = ''
+    toast('已保存')
+  } catch (e) {
+    toast(e.response?.data?.detail || '保存失败', 'err')
+  }
+}
+
+function toast(msg, type = 'ok') {
+  statusMsg.value = msg; statusType.value = type
+  setTimeout(() => statusMsg.value = '', 3000)
+}
+
+// LLM
+async function saveLLM() {
+  try { await adminApi.createLLMConfig({ ...llmForm.value }); showLLMForm.value = false; await loadLLM(); toast('已保存') }
+  catch (e) { toast(e.response?.data?.detail || '保存失败', 'err') }
+}
+async function setDefault(id) { await adminApi.setDefaultLLM(id); await loadLLM(); toast('已设为默认') }
 async function testLLM(id) {
-  await run(async () => {
-    const result = await adminApi.testLLMConfig(id)
-    alert(result.message || '连接成功')
-  })
+  toast('测试中...')
+  try { const r = await adminApi.testLLMConfig(id); toast(r.ok ? '连接成功' : '失败') }
+  catch (e) { toast('连接失败: ' + (e.response?.data?.detail || ''), 'err') }
 }
-
-async function setDefault(id) {
-  await run(async () => {
-    await adminApi.setDefaultLLMConfig(id)
-    await loadData()
-  })
-}
-
 async function deleteLLM(id) {
-  await run(async () => {
-    await adminApi.deleteLLMConfig(id)
-    await loadData()
-  })
+  if (!confirm('确认删除？')) return
+  await adminApi.deleteLLMConfig(id); await loadLLM(); toast('已删除')
 }
 
-async function createDB() {
-  await run(async () => {
-    if (!dbForm.value.name.trim() || !dbForm.value.db_type.trim() || !dbForm.value.host.trim() || !dbForm.value.database.trim()) throw new Error('请填写名称、类型、Host和Database')
-    if (!Number.isInteger(dbForm.value.port) || dbForm.value.port < 1 || dbForm.value.port > 65535) throw new Error('请输入1到65535之间的端口')
-    await adminApi.createDBConnection(dbForm.value)
-    showDBForm.value = false
-    dbForm.value = { name: '', db_type: '', host: '', port: 3306, user: '', password: '', database: '' }
-    await loadData()
-  })
+// DB
+async function saveDB() {
+  try { await adminApi.createDBConnection({ ...dbForm.value }); showDBForm.value = false; await loadDB(); toast('已保存') }
+  catch (e) { toast(e.response?.data?.detail || '保存失败', 'err') }
 }
-
 async function testDB(id) {
-  await run(async () => {
-    await adminApi.testDBConnection(id)
-    alert('连接成功')
-  })
+  toast('测试中...')
+  try { const r = await adminApi.testDBConnection(id); toast(r.ok ? '连接成功' : '失败') }
+  catch (e) { toast('连接失败: ' + (e.response?.data?.detail || ''), 'err') }
 }
-
 async function refreshSchema(id) {
-  await run(async () => {
-    await adminApi.refreshSchema(id)
-    alert('Schema已刷新')
-  })
+  try { const r = await adminApi.refreshSchema(id); toast(`Schema 已更新，共 ${r.tables?.length ?? 0} 张表`) }
+  catch (e) { toast('刷新失败', 'err') }
 }
-
 async function deleteDB(id) {
-  await run(async () => {
-    await adminApi.deleteDBConnection(id)
-    await loadData()
-  })
+  if (!confirm('确认删除？')) return
+  await adminApi.deleteDBConnection(id); await loadDB(); toast('已删除')
 }
 
-async function createUser() {
-  await run(async () => {
-    if (!userForm.value.username.trim() || !userForm.value.password) throw new Error('请填写用户名和密码')
-    await adminApi.createUser(userForm.value.username, userForm.value.password, userForm.value.role)
-    showUserForm.value = false
-    userForm.value = { username: '', password: '', role: 'user' }
-    await loadData()
-  })
+// Users
+async function saveUser() {
+  try { await adminApi.createUser({ ...userForm.value }); showUserForm.value = false; await loadUsers(); toast('用户已创建') }
+  catch (e) { toast(e.response?.data?.detail || '保存失败', 'err') }
 }
-
 async function toggleUser(id) {
-  await run(async () => {
-    await adminApi.toggleUserActive(id)
-    await loadData()
-  })
+  await adminApi.toggleUserActive(id); await loadUsers()
 }
-
-onMounted(() => run(loadData))
 </script>
 
 <style scoped>
-.request-error { color: #c0392b; padding: 12px 20px; position: relative; z-index: 101; background: white; }
-button:disabled { opacity: 0.6; cursor: wait; }
-.admin-layout { min-height: 100vh; }
-
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 16px 24px;
-  background: white;
-  border-bottom: 1px solid #eee;
-}
-
-.tabs {
-  display: flex;
-  background: #f5f5f5;
-  padding: 10px;
-  gap: 10px;
-}
-
+.chat-layout { display: flex; height: 100vh; overflow: hidden; }
+.admin-main { flex: 1; overflow-y: auto; padding: 24px; background: #f9fafb; }
+.admin-header { margin-bottom: 16px; }
+h2 { font-size: 1.2rem; font-weight: 600; }
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #e5e7eb; }
 .tabs button {
-  padding: 10px 20px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 4px;
+  padding: 8px 18px; background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; font-size: 0.9rem; color: #6b7280;
 }
-
-.tabs button.active {
-  background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.tabs button.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 500; }
+.tab-content { background: white; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; }
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid #e5e7eb;
 }
-
-.tab-content { padding: 20px; }
-
-.form-modal {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  margin: 15px 0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+h3 { font-size: 1rem; font-weight: 600; }
+.section-header button {
+  padding: 7px 14px; background: #3b82f6; color: white;
+  border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem;
 }
-
-.form-modal input, .form-modal select {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th { padding: 10px 14px; text-align: left; color: #6b7280; background: #f9fafb; font-weight: 500; }
+td { padding: 10px 14px; border-top: 1px solid #f3f4f6; }
+.actions { display: flex; gap: 6px; }
+.actions button {
+  padding: 4px 10px; font-size: 0.8rem; border-radius: 6px;
+  border: 1px solid #d1d5db; background: white; cursor: pointer; color: #374151;
 }
-
-.item-card {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 15px;
-  background: white;
-  margin: 10px 0;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+.actions button:hover { background: #f3f4f6; }
+.actions button.danger { color: #ef4444; border-color: #fca5a5; }
+.active-badge { color: #22c55e; font-weight: 500; }
+.inactive-badge { color: #9ca3af; }
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
 }
-
-.item-card button {
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  background: #f5f5f5;
-  border-radius: 4px;
-  cursor: pointer;
+.modal {
+  background: white; border-radius: 12px; padding: 28px; width: 400px;
+  display: flex; flex-direction: column; gap: 8px; max-height: 90vh; overflow-y: auto;
 }
-
-.modal-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
+.modal h3 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
+.modal label { font-size: 0.83rem; color: #374151; font-weight: 500; }
+.modal input, .modal select {
+  padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 0.9rem;
 }
-
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.settings-body { padding: 16px; display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
+.settings-body label { font-size: 0.83rem; color: #374151; font-weight: 500; margin-top: 4px; }
+.settings-body input, .settings-body select {
+  padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 0.9rem;
+}
+.current-status { font-size: 0.85rem; color: #6b7280; margin-bottom: 4px; }
 .modal-actions button {
-  flex: 1;
-  padding: 10px;
-  cursor: pointer;
+  padding: 7px 16px; border-radius: 8px; border: 1px solid #d1d5db;
+  background: white; cursor: pointer; font-size: 0.88rem;
 }
+.modal-actions button.primary { background: #3b82f6; color: white; border-color: #3b82f6; }
+.status-toast {
+  position: fixed; bottom: 24px; right: 24px; padding: 10px 20px;
+  background: #22c55e; color: white; border-radius: 8px; font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 200;
+}
+.status-toast.err { background: #ef4444; }
 </style>

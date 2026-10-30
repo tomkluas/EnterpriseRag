@@ -1,164 +1,137 @@
 <template>
-  <div class="chat-input-container">
-    <div class="scope-selector">
-      <label>
-        <input type="checkbox" v-model="scopeVector" />
+  <div class="chat-input-area">
+    <div class="scope-bar">
+      <label class="scope-item">
+        <input type="checkbox" v-model="scopeVector" :disabled="isStreaming" />
         <span>📚 知识库</span>
+        <select
+          v-if="scopeVector"
+          multiple
+          v-model="selectedKbs"
+          class="sub-select"
+          :disabled="isStreaming"
+        >
+          <option value="">全部</option>
+          <option v-for="kb in kbs" :key="kb.id" :value="kb.id">{{ kb.name }}</option>
+        </select>
       </label>
-      <label>
-        <input type="checkbox" v-model="scopeDatabase" />
+      <label class="scope-item">
+        <input type="checkbox" v-model="scopeDatabase" :disabled="isStreaming" />
         <span>🗄️ 数据库</span>
+        <select
+          v-if="scopeDatabase"
+          multiple
+          v-model="selectedDbs"
+          class="sub-select"
+          :disabled="isStreaming"
+        >
+          <option value="">全部</option>
+          <option v-for="db in dbs" :key="db.id" :value="db.id">{{ db.name }}</option>
+        </select>
       </label>
-      <label>
-        <input type="checkbox" v-model="scopeWeb" />
-        <span>🌐 联网搜索</span>
+      <label class="scope-item">
+        <input type="checkbox" v-model="scopeWeb" :disabled="isStreaming" />
+        <span>🌐 联网搜索<span v-if="searchProviderLabel" class="provider-tag">（{{ searchProviderLabel }}）</span></span>
       </label>
     </div>
-
     <div class="input-row">
       <textarea
-        v-model="inputText"
-        @keydown.enter.exact.prevent="sendMessage"
-        placeholder="输入问题，Enter发送，Shift+Enter换行"
+        v-model="text"
+        placeholder="输入问题，Enter 发送，Shift+Enter 换行..."
+        rows="2"
         :disabled="isStreaming"
-      ></textarea>
-      <button v-if="!isStreaming" @click="sendMessage">发送</button>
-      <button v-else @click="stopStreaming" class="stop-btn">停止</button>
+        @keydown.enter.exact.prevent="handleSend"
+      />
+      <button v-if="!isStreaming" class="send-btn" :disabled="!text.trim()" @click="handleSend">
+        发送
+      </button>
+      <button v-else class="stop-btn" @click="emit('stop')">停止</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
-import { useChatStore } from '@/stores/chat'
-import { useAuthStore } from '@/stores/auth'
-import { SSEClient } from '@/utils/sse'
+import { ref, onMounted } from 'vue'
+import { knowledgeApi } from '@/api/knowledge.js'
+import { adminApi } from '@/api/admin.js'
+import { useAuthStore } from '@/stores/auth.js'
 
-const chatStore = useChatStore()
-const authStore = useAuthStore()
-const router = useRouter()
+const props = defineProps({ isStreaming: Boolean })
+const emit = defineEmits(['send', 'stop'])
 
-const inputText = ref('')
-const isStreaming = ref(false)
+const text = ref('')
 const scopeVector = ref(true)
 const scopeDatabase = ref(false)
 const scopeWeb = ref(false)
+const selectedKbs = ref([])
+const selectedDbs = ref([])
+const kbs = ref([])
+const dbs = ref([])
+const auth = useAuthStore()
+const searchProviderLabel = ref('')
 
-let sseClient = null
+const PROVIDER_LABELS = { tavily: 'Tavily', bocha: '博查' }
 
-async function sendMessage() {
-  if (!inputText.value.trim() || isStreaming.value) return
+onMounted(async () => {
+  try { kbs.value = await knowledgeApi.list() } catch {}
+  if (auth.isAdmin) {
+    try { dbs.value = await adminApi.getDBConnections() } catch {}
+  }
+  try {
+    const info = await adminApi.getSystemInfo()
+    searchProviderLabel.value = PROVIDER_LABELS[info.search_provider] || info.search_provider
+  } catch {}
+})
 
-  const query = inputText.value.trim()
-  inputText.value = ''
-
-  if (!chatStore.currentSession()) chatStore.newSession()
-  chatStore.addMessage({ role: 'user', content: query })
-  const currentMsgId = chatStore.addMessage({ role: 'assistant', content: '' })
-  isStreaming.value = true
-
-  const body = {
-    session_id: chatStore.currentSessionId,
-    query,
+function handleSend() {
+  if (!text.value.trim() || props.isStreaming) return
+  emit('send', {
+    query: text.value.trim(),
     scope_vector: scopeVector.value,
     scope_database: scopeDatabase.value,
     scope_web: scopeWeb.value,
-    knowledge_ids: [],
-    db_connection_ids: [],
-    llm_config_id: null,
-  }
-
-  const client = new SSEClient('/api/v1/chat/stream', body, authStore.token)
-  sseClient = client
-
-  client
-    .on('source', (data) => {
-      chatStore.addSource(currentMsgId, data)
-    })
-    .on('token', (token) => {
-      chatStore.appendToken(currentMsgId, token)
-    })
-    .on('unauthorized', () => {
-      authStore.logout()
-      router.replace('/login')
-    })
-    .on('error', (err) => {
-      console.error('SSE error:', err)
-      chatStore.appendToken(currentMsgId, `\n[错误: ${err}]`)
-    })
-    .on('close', () => {
-      if (sseClient === client) {
-        isStreaming.value = false
-        sseClient = null
-      }
-    })
-
-  await client.start()
+    knowledge_ids: selectedKbs.value.filter(Boolean),
+    db_connection_ids: selectedDbs.value.filter(Boolean),
+  })
+  text.value = ''
 }
-
-function stopStreaming() {
-  if (sseClient) {
-    sseClient.abort()
-    sseClient = null
-    isStreaming.value = false
-  }
-}
-
-onBeforeUnmount(stopStreaming)
 </script>
 
 <style scoped>
-.chat-input-container {
-  padding: 16px 24px;
+.chat-input-area {
+  border-top: 1px solid var(--border);
   background: white;
-  border-top: 1px solid #eee;
+  padding: 12px 16px;
 }
-
-.scope-selector {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 12px;
+.scope-bar {
+  display: flex; gap: 16px; align-items: center;
+  margin-bottom: 10px; flex-wrap: wrap;
 }
-
-.scope-selector label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: 14px;
+.scope-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.83rem; color: #374151; cursor: pointer;
 }
-
-.scope-selector input[type="checkbox"] {
-  cursor: pointer;
+.scope-item input[type="checkbox"] { cursor: pointer; }
+.provider-tag { color: #9ca3af; font-size: 0.76rem; }
+.sub-select {
+  font-size: 0.78rem; padding: 2px 4px;
+  border: 1px solid #d1d5db; border-radius: 4px;
+  max-height: 80px;
 }
-
-.input-row {
-  display: flex;
-  gap: 12px;
+.input-row { display: flex; gap: 10px; align-items: flex-end; }
+textarea {
+  flex: 1; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px;
+  font-size: 0.95rem; resize: none; outline: none; font-family: inherit;
+  line-height: 1.5; max-height: 160px;
 }
-
-.input-row textarea {
-  flex: 1;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  resize: none;
-  min-height: 60px;
-  font-family: inherit;
-  font-size: 14px;
+textarea:focus { border-color: #3b82f6; }
+.send-btn, .stop-btn {
+  padding: 10px 20px; border: none; border-radius: 8px;
+  font-size: 0.9rem; font-weight: 500; cursor: pointer; white-space: nowrap;
 }
-
-.input-row button {
-  padding: 12px 24px;
-  background: #3498db;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.stop-btn {
-  background: #e74c3c !important;
-}
+.send-btn { background: #3b82f6; color: white; }
+.send-btn:hover:not(:disabled) { background: #2563eb; }
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.stop-btn { background: #ef4444; color: white; }
+.stop-btn:hover { background: #dc2626; }
 </style>

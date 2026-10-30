@@ -1,14 +1,9 @@
-from functools import lru_cache
-
-from sqlalchemy.orm import Session
-
-from app.core.config import settings
-from app.db.database import get_db, engine, create_tables
+from app.db.database import SessionLocal
 
 
-@lru_cache
-def get_settings():
-    return settings
-
-
-__all__ = ["get_db", "get_settings", "create_tables"]
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

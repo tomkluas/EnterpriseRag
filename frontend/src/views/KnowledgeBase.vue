@@ -1,272 +1,229 @@
 <template>
-  <div class="kb-layout">
-    <header class="kb-header">
-      <h1>知识库管理</h1>
-      <AppNavigation />
-    </header>
-
-    <div class="kb-content">
-      <p v-if="error" role="alert" class="request-error">{{ error }}</p>
-      <div class="kb-actions">
-        <button :disabled="busy" @click="showCreate = true">创建知识库</button>
+  <div class="chat-layout">
+    <ChatSidebar />
+    <div class="kb-main">
+      <div class="kb-header">
+        <h2>📚 知识库管理</h2>
+        <button @click="showCreate = true">＋ 新建知识库</button>
       </div>
 
-      <div v-if="showCreate" class="modal">
-        <div class="modal-content">
-          <h3>创建知识库</h3>
-          <input v-model="newKbName" placeholder="知识库名称" />
-          <input v-model="newKbDesc" placeholder="描述" />
+      <!-- Create Dialog -->
+      <div v-if="showCreate" class="modal-overlay" @click.self="showCreate = false">
+        <div class="modal">
+          <h3>新建知识库</h3>
+          <label>名称</label>
+          <input v-model="newName" placeholder="知识库名称" />
+          <label>描述</label>
+          <input v-model="newDesc" placeholder="可选描述" />
           <div class="modal-actions">
-            <button :disabled="busy" @click="createKb">创建</button>
-            <button :disabled="busy" @click="showCreate = false">取消</button>
+            <button @click="showCreate = false">取消</button>
+            <button class="primary" @click="handleCreate">创建</button>
           </div>
         </div>
       </div>
 
-      <div class="kb-list">
-        <div v-for="kb in kbs" :key="kb.id" class="kb-card">
-          <div class="kb-info">
-            <h3>{{ kb.name }}</h3>
-            <p>{{ kb.description }}</p>
-            <span>文档数: {{ kb.doc_count }}</span>
+      <div class="kb-grid">
+        <div v-for="kb in kbs" :key="kb.id" class="kb-card" :class="{ selected: selected?.id === kb.id }" @click="selectKb(kb)">
+          <div class="kb-card-header">
+            <span class="kb-name">{{ kb.name }}</span>
+            <span class="kb-count">{{ kb.doc_count }} 文档</span>
           </div>
-          <div class="kb-actions">
-            <button :disabled="busy" @click="selectKb(kb)">上传文档</button>
-            <button :disabled="busy" @click="viewDocs(kb)">查看文档</button>
-            <button :disabled="busy" v-if="authStore.isAdmin" @click="deleteKb(kb.id)">删除</button>
-          </div>
+          <p class="kb-desc">{{ kb.description || '暂无描述' }}</p>
+          <button class="del-kb" @click.stop="handleDeleteKb(kb.id)">删除</button>
         </div>
       </div>
 
-      <div v-if="selectedKb" class="modal">
-        <div class="modal-content">
-          <h3>上传文档 - {{ selectedKb.name }}</h3>
-          <input type="file" @change="handleFileUpload" accept=".pdf,.docx,.xlsx,.txt,.md" />
-          <div class="modal-actions">
-            <button @click="uploadDoc" :disabled="!file || busy">{{ busy ? '上传中...' : '上传' }}</button>
-            <button :disabled="busy" @click="selectedKb = null">取消</button>
-          </div>
+      <div v-if="selected" class="docs-panel">
+        <div class="docs-header">
+          <h3>{{ selected.name }} — 文档列表</h3>
+          <label class="upload-btn">
+            📎 上传文档
+            <input type="file" accept=".pdf,.docx,.xlsx,.txt,.md" @change="handleUpload" hidden />
+          </label>
         </div>
-      </div>
-
-      <div v-if="showDocs" class="modal">
-        <div class="modal-content docs-modal">
-          <h3>文档列表 - {{ showDocs.name }}</h3>
-          <div v-for="doc in documents" :key="doc.id" class="doc-item">
-            <span>{{ doc.filename }}</span>
-            <span :class="'status-' + doc.status">{{ doc.status }}</span>
-            <span v-if="doc.error_msg" role="alert">{{ doc.error_msg }}</span>
-            <button :disabled="busy" @click="deleteDoc(showDocs.id, doc.id)">删除</button>
-          </div>
-          <div class="modal-actions">
-            <button :disabled="busy" @click="viewDocs(showDocs)">刷新状态</button>
-            <button :disabled="busy" @click="showDocs = null">关闭</button>
-          </div>
-        </div>
+        <p v-if="refreshError" class="doc-error">{{ refreshError }}</p>
+        <table>
+          <thead>
+            <tr><th>文件名</th><th>状态</th><th>块数</th><th>大小</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="doc in docs" :key="doc.id">
+              <td>{{ doc.filename }}</td>
+              <td>
+                <span :class="`status-${doc.status}`">{{ statusLabel(doc.status) }}</span>
+                <p v-if="doc.status === 'failed' && doc.error_msg" class="doc-error">{{ doc.error_msg }}</p>
+              </td>
+              <td>{{ doc.chunk_count }}</td>
+              <td>{{ formatSize(doc.file_size) }}</td>
+              <td><button class="del-doc" @click="handleDeleteDoc(doc.id)">删除</button></td>
+            </tr>
+            <tr v-if="docs.length === 0">
+              <td colspan="5" style="text-align:center;color:#9ca3af">暂无文档</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { errorMessage } from '@/utils/errors'
-import AppNavigation from '@/components/AppNavigation.vue'
-import { useAuthStore } from '@/stores/auth'
-import { listKnowledgeBases, createKnowledgeBase, uploadDocument, listDocuments, deleteDocument, deleteKnowledgeBase } from '@/api/knowledge'
+import { ref, onMounted, onUnmounted } from 'vue'
+import ChatSidebar from '@/components/ChatSidebar.vue'
+import { knowledgeApi } from '@/api/knowledge.js'
 
-const busy = ref(false)
-const error = ref('')
-async function run(action) {
-  if (busy.value) return
-  busy.value = true
-  error.value = ''
-  try { await action() } catch (e) { error.value = errorMessage(e) } finally { busy.value = false }
-}
-
-const authStore = useAuthStore()
 const kbs = ref([])
+const selected = ref(null)
+const docs = ref([])
 const showCreate = ref(false)
-const newKbName = ref('')
-const newKbDesc = ref('')
-const selectedKb = ref(null)
-const file = ref(null)
-const showDocs = ref(null)
-const documents = ref([])
+const newName = ref('')
+const newDesc = ref('')
+const refreshError = ref('')
+let pollTimer
+let polling = false
+let disposed = false
+
+onMounted(() => {
+  loadKbs().catch(() => { refreshError.value = '知识库列表加载失败，请刷新页面重试' })
+  pollTimer = setInterval(async () => {
+    if (disposed || polling || !selected.value || !docs.value.some(doc => ['pending', 'processing'].includes(doc.status))) return
+    polling = true
+    try {
+      await refreshDocs()
+      if (!disposed && !docs.value.some(doc => ['pending', 'processing'].includes(doc.status))) await loadKbs()
+    } catch {
+      if (!disposed) refreshError.value = '状态刷新失败，正在重试；当前显示的状态可能已过期'
+    } finally {
+      polling = false
+    }
+  }, 2000)
+})
+
+onUnmounted(() => {
+  disposed = true
+  clearInterval(pollTimer)
+})
 
 async function loadKbs() {
-  kbs.value = await listKnowledgeBases()
+  kbs.value = await knowledgeApi.list()
 }
 
-async function createKb() {
-  await run(async () => {
-    if (!newKbName.value.trim()) throw new Error('请填写知识库名称')
-    await createKnowledgeBase(newKbName.value.trim(), newKbDesc.value)
-    showCreate.value = false
-    newKbName.value = ''
-    newKbDesc.value = ''
-    await loadKbs()
-  })
+async function selectKb(kb) {
+  selected.value = kb
+  docs.value = []
+  await refreshDocs()
 }
 
-function selectKb(kb) {
-  selectedKb.value = kb
-  file.value = null
+async function handleCreate() {
+  if (!newName.value.trim()) return
+  await knowledgeApi.create(newName.value.trim(), newDesc.value)
+  showCreate.value = false
+  newName.value = ''
+  newDesc.value = ''
+  await loadKbs()
 }
 
-function handleFileUpload(e) {
-  file.value = e.target.files[0]
+async function handleDeleteKb(id) {
+  if (!confirm('确认删除该知识库及全部文档？')) return
+  await knowledgeApi.deleteKb(id)
+  if (selected.value?.id === id) selected.value = null
+  await loadKbs()
 }
 
-async function uploadDoc() {
-  await run(async () => {
-    if (!file.value || !selectedKb.value) return
-    await uploadDocument(selectedKb.value.id, file.value)
-    selectedKb.value = null
-    file.value = null
-    await loadKbs()
-  })
+async function handleUpload(e) {
+  const file = e.target.files[0]
+  if (!file || !selected.value) return
+  await knowledgeApi.upload(selected.value.id, file)
+  e.target.value = ''
+  await refreshDocs()
 }
 
-async function viewDocs(kb) {
-  await run(async () => {
-    const loaded = await listDocuments(kb.id)
-    documents.value = loaded
-    showDocs.value = kb
-  })
+async function handleDeleteDoc(docId) {
+  if (!confirm('确认删除该文档？')) return
+  await knowledgeApi.deleteDoc(selected.value.id, docId)
+  await refreshDocs()
 }
 
-async function deleteDoc(kbId, docId) {
-  await run(async () => {
-    await deleteDocument(kbId, docId)
-    if (showDocs.value) {
-      documents.value = await listDocuments(showDocs.value.id)
+async function refreshDocs() {
+  const kbId = selected.value?.id
+  if (kbId) {
+    const latestDocs = await knowledgeApi.listDocs(kbId)
+    if (!disposed && selected.value?.id === kbId) {
+      docs.value = latestDocs
+      refreshError.value = ''
     }
-    await loadKbs()
-  })
+  }
 }
 
-async function deleteKb(kbId) {
-  await run(async () => {
-    await deleteKnowledgeBase(kbId)
-    await loadKbs()
-  })
+function statusLabel(status) {
+  return { pending: '排队中', processing: '处理中（解析 / 向量化 / 入库）', done: '已完成', failed: '处理失败' }[status] || status
 }
 
-onMounted(() => run(loadKbs))
+function formatSize(bytes) {
+  if (!bytes) return '-'
+  if (bytes < 1024) return `${bytes}B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`
+}
 </script>
 
 <style scoped>
-.request-error { color: #c0392b; padding: 12px 20px; position: relative; z-index: 101; background: white; }
-button:disabled { opacity: 0.6; cursor: wait; }
-.kb-layout {
-  min-height: 100vh;
+.chat-layout { display: flex; height: 100vh; overflow: hidden; }
+.kb-main { flex: 1; overflow-y: auto; padding: 24px; background: #f9fafb; }
+.kb-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+h2 { font-size: 1.2rem; font-weight: 600; }
+.kb-header button {
+  padding: 8px 16px; background: #3b82f6; color: white;
+  border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
 }
-
-.kb-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
-  background: white;
-  border-bottom: 1px solid #eee;
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-}
-
-.modal-content {
-  background: white;
-  padding: 24px;
-  border-radius: 8px;
-  width: 400px;
-  max-width: 90%;
-}
-
-.modal-content input {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.modal-actions button {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.kb-list {
-  padding: 20px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-}
-
+.kb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-bottom: 28px; }
 .kb-card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: white; border: 1px solid #e5e7eb; border-radius: 10px;
+  padding: 14px; cursor: pointer; transition: box-shadow 0.15s;
 }
-
-.kb-info h3 {
-  margin-bottom: 10px;
+.kb-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.kb-card.selected { border-color: #3b82f6; box-shadow: 0 0 0 2px #bfdbfe; }
+.kb-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.kb-name { font-weight: 600; font-size: 0.95rem; }
+.kb-count { font-size: 0.78rem; color: #6b7280; background: #f3f4f6; padding: 2px 7px; border-radius: 10px; }
+.kb-desc { font-size: 0.82rem; color: #9ca3af; margin-bottom: 10px; }
+.del-kb { font-size: 0.78rem; color: #ef4444; background: none; border: none; cursor: pointer; }
+.docs-panel { background: white; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; }
+.docs-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid #e5e7eb;
 }
-
-.kb-info p {
-  color: #666;
-  font-size: 14px;
-  margin-bottom: 10px;
+h3 { font-size: 1rem; font-weight: 600; }
+.upload-btn {
+  padding: 7px 14px; background: #3b82f6; color: white;
+  border-radius: 8px; cursor: pointer; font-size: 0.85rem;
 }
-
-.kb-info span {
-  font-size: 12px;
-  color: #999;
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th { padding: 10px 14px; text-align: left; color: #6b7280; background: #f9fafb; font-weight: 500; }
+td { padding: 10px 14px; border-top: 1px solid #f3f4f6; }
+.status-done { color: #22c55e; font-weight: 500; }
+.status-processing { color: #f59e0b; }
+.status-failed { color: #ef4444; }
+.status-pending { color: #9ca3af; }
+.doc-error { color: #ef4444; font-size: 0.8rem; max-width: 600px; overflow-wrap: anywhere; margin: 6px 14px; }
+.del-doc { color: #ef4444; background: none; border: none; cursor: pointer; font-size: 0.82rem; }
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
 }
-
-.kb-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
+.modal {
+  background: white; border-radius: 12px; padding: 28px; width: 360px;
+  display: flex; flex-direction: column; gap: 10px;
 }
-
-.kb-actions button {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  background: #f5f5f5;
+.modal h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 4px; }
+.modal label { font-size: 0.85rem; color: #374151; font-weight: 500; }
+.modal input {
+  padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.9rem;
 }
-
-.doc-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  border-bottom: 1px solid #eee;
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.modal-actions button {
+  padding: 7px 16px; border-radius: 8px; border: 1px solid #d1d5db;
+  background: white; cursor: pointer; font-size: 0.88rem;
 }
-
-.status-done { color: #2ecc71; }
-.status-failed { color: #e74c3c; }
-.status-pending, .status-processing { color: #f39c12; }
+.modal-actions button.primary { background: #3b82f6; color: white; border-color: #3b82f6; }
 </style>

@@ -1,28 +1,21 @@
 <template>
-  <div class="login-container">
-    <div class="login-box">
+  <div class="login-page">
+    <div class="login-card">
       <h1>企业RAG系统</h1>
+      <p class="subtitle">智能知识问答平台</p>
       <form @submit.prevent="handleLogin">
-        <div class="form-group">
-          <input
-            v-model="username"
-            type="text"
-            placeholder="用户名"
-            required
-          />
+        <div class="field">
+          <label>用户名</label>
+          <input v-model="username" type="text" placeholder="请输入用户名" required autofocus />
         </div>
-        <div class="form-group">
-          <input
-            v-model="password"
-            type="password"
-            placeholder="密码"
-            required
-          />
+        <div class="field">
+          <label>密码</label>
+          <input v-model="password" type="password" placeholder="请输入密码" required />
         </div>
+        <p v-if="error" class="error">{{ error }}</p>
         <button type="submit" :disabled="loading">
           {{ loading ? '登录中...' : '登录' }}
         </button>
-        <p v-if="error" class="error">{{ error }}</p>
       </form>
     </div>
   </div>
@@ -31,25 +24,25 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { errorMessage } from '@/utils/errors'
+import { useAuthStore } from '@/stores/auth.js'
+import { authApi } from '@/api/auth.js'
 
 const router = useRouter()
-const authStore = useAuthStore()
-
+const auth = useAuthStore()
 const username = ref('')
 const password = ref('')
-const loading = ref(false)
 const error = ref('')
+const loading = ref(false)
 
 async function handleLogin() {
-  loading.value = true
   error.value = ''
+  loading.value = true
   try {
-    await authStore.login(username.value, password.value)
+    const data = await authApi.login(username.value, password.value)
+    auth.setAuth(data)
     router.push('/')
   } catch (e) {
-    error.value = errorMessage(e, '登录失败')
+    error.value = e.response?.data?.detail || '登录失败，请检查用户名和密码'
   } finally {
     loading.value = false
   }
@@ -57,66 +50,35 @@ async function handleLogin() {
 </script>
 
 <style scoped>
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.login-page {
   min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
-
-.login-box {
+.login-card {
   background: white;
+  border-radius: 12px;
   padding: 40px;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  width: 100%;
-  max-width: 360px;
+  width: 380px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
-
-.login-box h1 {
-  text-align: center;
-  margin-bottom: 30px;
-  color: #333;
-  font-size: 24px;
+h1 { font-size: 1.6rem; font-weight: 700; color: #111; margin-bottom: 4px; }
+.subtitle { color: #6b7280; margin-bottom: 28px; font-size: 0.9rem; }
+.field { margin-bottom: 16px; }
+label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 6px; color: #374151; }
+input {
+  width: 100%; padding: 10px 12px; border: 1px solid #d1d5db;
+  border-radius: 8px; font-size: 0.95rem; outline: none; transition: border 0.2s;
 }
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
+input:focus { border-color: #3b82f6; }
+.error { color: #ef4444; font-size: 0.85rem; margin-bottom: 12px; }
 button {
-  width: 100%;
-  padding: 12px;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
+  width: 100%; padding: 11px; background: #3b82f6; color: white;
+  border: none; border-radius: 8px; font-size: 1rem; font-weight: 500;
+  cursor: pointer; transition: background 0.2s; margin-top: 8px;
 }
-
-button:hover:not(:disabled) {
-  background: #5a6fd6;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.error {
-  color: #e74c3c;
-  text-align: center;
-  margin-top: 15px;
-  font-size: 14px;
-}
+button:hover:not(:disabled) { background: #2563eb; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
