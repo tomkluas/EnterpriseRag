@@ -1,5 +1,7 @@
 # EnterpriseRag · V2
 
+> 版本切换：当前为 **V2（Windows 轻量交付 / 在线 Embedding）** · [查看 V1（Docker 部署 / 本地 BGE）](https://github.com/tomkluas/EnterpriseRag/blob/V1/README.md)
+
 面向个人与中小团队的企业知识库问答系统，使用 Vue 3、FastAPI、LangGraph、嵌入式 ChromaDB 和在线模型 API。
 
 **V2 定位：以 Windows 单文件程序交付的本机知识检索与问答工具。** 用户运行打包后的 `启动RAG系统.exe`，通过浏览器完成初始化、上传资料和提问；无需安装 Docker、Python、Node.js 或本地模型。开发与打包环境仍需 Python 3.11 和 Node.js 18+，模型、Embedding 与联网搜索需要访问所配置的外部 API。
