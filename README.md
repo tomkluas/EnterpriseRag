@@ -1,5 +1,7 @@
 # EnterpriseRag · v1
 
+> 版本切换：当前为 **V1（Docker 部署 / 本地 BGE）** · [查看 V2（Windows 轻量交付 / 在线 Embedding）](https://github.com/tomkluas/EnterpriseRag/blob/V2/README.md)
+
 企业知识库与 RAG 系统，使用 Vue 3、FastAPI、LangGraph、Qdrant 和本地 BGE 模型。
 
 **v1 定位：本地部署的企业资料检索与问答站点。** 已验证登录、管理操作、文件入库、知识库检索、真实模型流式回答、来源展示和联网搜索。全部 23 个业务接口已纳入认证与交互检查；外部业务数据库的实际连通性仍需在配置对应服务后验证，详见[验证](#验证)与[已知限制](#已知限制)。
