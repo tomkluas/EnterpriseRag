@@ -1,0 +1,255 @@
+{
+  "date": "2026-10-29",
+  "timezone": "Asia/Shanghai",
+  "registered_business_routes": 23,
+  "routes": [
+    {
+      "path": "/api/health",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/auth/login",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/auth/me",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/chat/stream",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/knowledge/list",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/knowledge/create",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/knowledge/{kb_id}/upload",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/knowledge/{kb_id}/documents",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/knowledge/{kb_id}/documents/{doc_id}",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/knowledge/{kb_id}",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/llm-configs",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/llm-configs",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/llm-configs/{config_id}/set-default",
+      "methods": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/llm-configs/{config_id}",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/llm-configs/test",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/db-connections",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/db-connections",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/db-connections/{conn_id}",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/db-connections/{conn_id}/test",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/db-connections/{conn_id}/refresh-schema",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/users",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/users",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/admin/users/{user_id}/toggle-active",
+      "methods": [
+        "PUT"
+      ]
+    }
+  ],
+  "backend_full_suite": {
+    "passed": 74,
+    "warnings": 5
+  },
+  "frontend_tests": {
+    "passed": 14,
+    "production_build": "passed"
+  },
+  "live_checks": [
+    {
+      "check": "GET /api/health",
+      "passed": true
+    },
+    {
+      "check": "GET /api/v1/auth/me",
+      "passed": true
+    },
+    {
+      "check": "GET /api/v1/knowledge/list",
+      "passed": true
+    },
+    {
+      "check": "GET /api/v1/admin/llm-configs",
+      "passed": true
+    },
+    {
+      "check": "GET /api/v1/admin/db-connections",
+      "passed": true
+    },
+    {
+      "check": "GET /api/v1/admin/users",
+      "passed": true
+    },
+    {
+      "check": "chat body validation",
+      "passed": true
+    },
+    {
+      "check": "model create / actual connection test",
+      "passed": true
+    },
+    {
+      "check": "knowledge upload / real embedding",
+      "passed": true,
+      "status": "done",
+      "chunk_count": 1,
+      "error": ""
+    },
+    {
+      "check": "knowledge retrieval / real model / source",
+      "passed": true,
+      "answer_chars": 18,
+      "source_types": [
+        "vector"
+      ],
+      "errors": []
+    },
+    {
+      "check": "answer grounded in uploaded fixture",
+      "passed": true
+    },
+    {
+      "check": "configured web search / source",
+      "passed": true,
+      "answer_chars": 781,
+      "source_types": [
+        "web",
+        "web",
+        "web",
+        "web",
+        "web"
+      ],
+      "errors": []
+    },
+    {
+      "check": "document delete / empty list",
+      "passed": true
+    },
+    {
+      "check": "cleanup /api/v1/knowledge/",
+      "passed": true
+    },
+    {
+      "check": "cleanup /api/v1/admin/llm-configs/",
+      "passed": true
+    }
+  ],
+  "review": "Independent backend and frontend reviews completed; confirmed findings fixed and tested",
+  "limitations": [
+    "No external business database connections are configured. SQL and Mongo behavior tested with temporary SQLite and isolated doubles; actual MySQL/PostgreSQL/MSSQL/Oracle/Mongo servers were not tested.",
+    "Current container has no Microsoft ODBC driver. MSSQL requires installing the driver; the API now returns an explicit actionable error."
+  ],
+  "cleanup": {
+    "remaining_test_documents": 0,
+    "remaining_test_knowledge_bases": 0,
+    "remaining_test_model_configs": 0
+  },
+  "commands": [
+    "docker exec -e DATABASE_URL=sqlite:///:memory: -e PYTHONPATH=/app:/tmp/enterprise-test-tools enterpriserag-backend-1 python -m pytest -q",
+    "cd frontend; npm test; npm run build",
+    "docker exec -e PYTHONPATH=/app enterpriserag-backend-1 python scripts/verify_interfaces.py"
+  ],
+  "browser_checks": [
+    "Login success and invalid login error shown",
+    "Admin user list loaded",
+    "Knowledge documents loaded; legacy count corrected to actual completed documents",
+    "Original question returned a model answer and send button recovered",
+    "Original question answered with visible source cards; source expansion verified"
+  ],
+  "screenshot": "docs/testing/interface-browser-verification-2026-10-29.jpg"
+}
