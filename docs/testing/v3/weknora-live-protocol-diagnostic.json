@@ -1,0 +1,71 @@
+{
+  "audit_level": "runtime_integration_partial",
+  "at": "2026-10-30T09:24:53.427227+00:00",
+  "provider": "weknora",
+  "commit": "f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7",
+  "model_mode": "deterministic_http_fixture",
+  "checks": [
+    {
+      "id": "ingest-ALLOWED_A",
+      "status": "passed",
+      "chunks": 1
+    },
+    {
+      "id": "ingest-FORBIDDEN_B",
+      "status": "passed",
+      "chunks": 1
+    },
+    {
+      "id": "vector-ALLOWED_A",
+      "status": "passed",
+      "hits": 1
+    },
+    {
+      "id": "vector-FORBIDDEN_B",
+      "status": "passed",
+      "hits": 1
+    },
+    {
+      "id": "keyword-ALLOWED_A",
+      "status": "passed",
+      "hits": 1
+    },
+    {
+      "id": "keyword-FORBIDDEN_B",
+      "status": "passed",
+      "hits": 1
+    },
+    {
+      "id": "hybrid-ALLOWED_A",
+      "status": "passed",
+      "hits": 1
+    },
+    {
+      "id": "hybrid-FORBIDDEN_B",
+      "status": "passed",
+      "hits": 1
+    },
+    {
+      "id": "adapter-scope",
+      "status": "passed"
+    }
+  ],
+  "real_model_quality": "not_run",
+  "production_g0": "not_complete",
+  "diagnostic_configuration": {
+    "question_generation_enabled": true,
+    "note": "Default disabled setting failed keyword/hybrid in ParadeDB; this contrast does not approve enabling it in production."
+  },
+  "bindings": [
+    {
+      "marker": "ALLOWED_A",
+      "remote_id": "3a8b8adc-2d6f-4b7d-814a-a0bf1b4c971c",
+      "collection_id": "ae4bf7c0-1dd7-4230-8b53-63cf6ef1b1b0"
+    },
+    {
+      "marker": "FORBIDDEN_B",
+      "remote_id": "6d954559-ce55-4b82-a691-04ee31727869",
+      "collection_id": "ae4bf7c0-1dd7-4230-8b53-63cf6ef1b1b0"
+    }
+  ]
+}

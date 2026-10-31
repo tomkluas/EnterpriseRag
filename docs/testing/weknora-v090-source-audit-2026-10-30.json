@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "audited_at": "2026-10-30T08:06:13.523Z",
+  "upstream": "https://github.com/Tencent/WeKnora",
+  "tag": "v0.9.0",
+  "commit": "f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7",
+  "audit_level": "static_source_contract",
+  "scope": "Presence of source constructs at the pinned revision; manual call-chain review is documented separately.",
+  "summary": {
+    "checked": 25,
+    "found": 25
+  },
+  "runtime_integration": "not_run",
+  "upstream_go_tests": "not_run",
+  "limits": [
+    "Docker Linux engine was unavailable, including after an attempt to start installed Docker Desktop.",
+    "Installed Go is 1.21.5; upstream go.mod requires 1.26.0.",
+    "Pattern checks do not prove authorization, recovery, parser quality, or concurrency behavior.",
+    "The caller must obtain source files from the pinned commit; this script does not authenticate the source directory."
+  ],
+  "checks": [
+    {
+      "id": "retrieval_route",
+      "status": "source_pattern_found",
+      "file": "internal/router/routes_knowledge.go",
+      "line": 260,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/router/routes_knowledge.go#L260"
+    },
+    {
+      "id": "upload_route",
+      "status": "source_pattern_found",
+      "file": "internal/router/routes_knowledge.go",
+      "line": 73,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/router/routes_knowledge.go#L73"
+    },
+    {
+      "id": "delete_route",
+      "status": "source_pattern_found",
+      "file": "internal/router/routes_knowledge.go",
+      "line": 129,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/router/routes_knowledge.go#L129"
+    },
+    {
+      "id": "reparse_route",
+      "status": "source_pattern_found",
+      "file": "internal/router/routes_knowledge.go",
+      "line": 129,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/router/routes_knowledge.go#L129"
+    },
+    {
+      "id": "rebuild_route",
+      "status": "source_pattern_found",
+      "file": "internal/router/routes_knowledge.go",
+      "line": 110,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/router/routes_knowledge.go#L110"
+    },
+    {
+      "id": "document_scope_input",
+      "status": "source_pattern_found",
+      "file": "internal/types/search.go",
+      "line": 275,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/types/search.go#L275"
+    },
+    {
+      "id": "skip_enrichment_input",
+      "status": "source_pattern_found",
+      "file": "internal/types/search.go",
+      "line": 286,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/types/search.go#L286"
+    },
+    {
+      "id": "document_scope_propagated",
+      "status": "source_pattern_found",
+      "file": "internal/application/service/knowledgebase_search.go",
+      "line": 496,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/application/service/knowledgebase_search.go#L496"
+    },
+    {
+      "id": "multi_kb_authorization",
+      "status": "source_pattern_found",
+      "file": "internal/application/service/knowledgebase_search.go",
+      "line": 200,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/application/service/knowledgebase_search.go#L200"
+    },
+    {
+      "id": "embedding_consistency",
+      "status": "source_pattern_found",
+      "file": "internal/application/service/knowledgebase_search.go",
+      "line": 208,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/application/service/knowledgebase_search.go#L208"
+    },
+    {
+      "id": "keyword_document_filter",
+      "status": "source_pattern_found",
+      "file": "internal/application/repository/retriever/postgres/repository.go",
+      "line": 249,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/application/repository/retriever/postgres/repository.go#L249"
+    },
+    {
+      "id": "vector_document_filter",
+      "status": "source_pattern_found",
+      "file": "internal/application/repository/retriever/postgres/repository.go",
+      "line": 373,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/application/repository/retriever/postgres/repository.go#L373"
+    },
+    {
+      "id": "source_locators_in_response",
+      "status": "source_pattern_found",
+      "file": "internal/types/search.go",
+      "line": 238,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/types/search.go#L238"
+    },
+    {
+      "id": "locator_partial_flag",
+      "status": "source_pattern_found",
+      "file": "internal/types/source_locator.go",
+      "line": 39,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/types/source_locator.go#L39"
+    },
+    {
+      "id": "api_key_retrieve_capability",
+      "status": "source_pattern_found",
+      "file": "internal/types/tenant_api_key.go",
+      "line": 78,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/types/tenant_api_key.go#L78"
+    },
+    {
+      "id": "api_key_kb_allowlist",
+      "status": "source_pattern_found",
+      "file": "internal/types/tenant_api_key.go",
+      "line": 26,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/types/tenant_api_key.go#L26"
+    },
+    {
+      "id": "explicit_rbac_override",
+      "status": "source_pattern_found",
+      "file": "internal/config/config.go",
+      "line": 660,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/config/config.go#L660"
+    },
+    {
+      "id": "no_rerank_by_default",
+      "status": "source_pattern_found",
+      "file": "internal/handler/knowledgebase.go",
+      "line": 427,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/handler/knowledgebase.go#L427"
+    },
+    {
+      "id": "rerank_failure_fallback",
+      "status": "source_pattern_found",
+      "file": "internal/application/service/knowledgebase_search_rerank.go",
+      "line": 178,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/application/service/knowledgebase_search_rerank.go#L178"
+    },
+    {
+      "id": "document_retry_count",
+      "status": "source_pattern_found",
+      "file": "internal/application/service/knowledge_task_options.go",
+      "line": 15,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/application/service/knowledge_task_options.go#L15"
+    },
+    {
+      "id": "durable_mode_detection",
+      "status": "source_pattern_found",
+      "file": "internal/container/reset_pending_tasks.go",
+      "line": 33,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/container/reset_pending_tasks.go#L33"
+    },
+    {
+      "id": "housekeeping_failure_detection",
+      "status": "source_pattern_found",
+      "file": "internal/application/service/knowledge_housekeeping.go",
+      "line": 5,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/internal/application/service/knowledge_housekeeping.go#L5"
+    },
+    {
+      "id": "redis_aof_in_compose",
+      "status": "source_pattern_found",
+      "file": "docker-compose.yml",
+      "line": 609,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/docker-compose.yml#L609"
+    },
+    {
+      "id": "postgres_search_is_paradedb",
+      "status": "source_pattern_found",
+      "file": "docker-compose.yml",
+      "line": 586,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/docker-compose.yml#L586"
+    },
+    {
+      "id": "upstream_go_requirement",
+      "status": "source_pattern_found",
+      "file": "go.mod",
+      "line": 3,
+      "source": "https://github.com/Tencent/WeKnora/blob/f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7/go.mod#L3"
+    }
+  ],
+  "manifest": [
+    {
+      "file": "internal/router/routes_knowledge.go",
+      "sha256": "b419b1dfe11e8f934f1763c84bceac049af0536bbd43032ff62177948dc9529c"
+    },
+    {
+      "file": "internal/types/search.go",
+      "sha256": "67aa40fd238420969060c5794b422b9718e78cb9093d25884718dbe489daf29f"
+    },
+    {
+      "file": "internal/application/service/knowledgebase_search.go",
+      "sha256": "0a8e3a11960a1046331e3aee4cdc6ad4f053973dcc11ce0ab0132d68106bd9e9"
+    },
+    {
+      "file": "internal/application/repository/retriever/postgres/repository.go",
+      "sha256": "b6c00fbb1aef98116232705bc890e77f51c22722a7a0e8a285bae66a203b3b82"
+    },
+    {
+      "file": "internal/types/source_locator.go",
+      "sha256": "fc65aa152ede957b619e0ace3f70a534c680f25e7a2173295290a702f8a52c0d"
+    },
+    {
+      "file": "internal/types/tenant_api_key.go",
+      "sha256": "7d021b05584b02f095112266ac349392b7a5464c43dc238a9845ad014a27caa0"
+    },
+    {
+      "file": "internal/config/config.go",
+      "sha256": "c0c9ef89147f9a98898c54ec12c7a2aaa4a75ffd15cbd077d70350033ed654cd"
+    },
+    {
+      "file": "internal/handler/knowledgebase.go",
+      "sha256": "71cbb4941fb48b23c8ad75c160a395f75d2ba1099f45ce28af865f1e6fb6b89e"
+    },
+    {
+      "file": "internal/application/service/knowledgebase_search_rerank.go",
+      "sha256": "7e3435c5221aa3508b6002f04033af6a43c579971ba154412539240c2c9417af"
+    },
+    {
+      "file": "internal/application/service/knowledge_task_options.go",
+      "sha256": "e11119f33a77d8373e33a680995398ad65c6e2cf54b55131baf853ce7407ff00"
+    },
+    {
+      "file": "internal/container/reset_pending_tasks.go",
+      "sha256": "a23c5c2fa6f8fa86e0ce712e93b965ec5bad12afca851699ea41b63485c87c22"
+    },
+    {
+      "file": "internal/application/service/knowledge_housekeeping.go",
+      "sha256": "4d349e2ad7f590a175ef57d23723ce25ba88091d92c84b1874dafb2beb539b34"
+    },
+    {
+      "file": "docker-compose.yml",
+      "sha256": "715d5e3f0e9daca1b3d8ceec7fcd7c63f711a97773df33b9c9a35d681794c4e4"
+    },
+    {
+      "file": "go.mod",
+      "sha256": "544683dfbb25e79ba4af65dbbdf51689c25e948ab574fb712a9dce19eb35e029"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "passed": false,
+  "production_acceptance": "not_complete",
+  "failed_window": {
+    "requests_persisted": 99,
+    "completed": 0,
+    "failed": 84,
+    "evidence_nonempty": 0
+  },
+  "server_log_error_counts": {
+    "Token": 0,
+    "different Context": 0,
+    "ValueError": 0,
+    "LockNotAvailable": 28,
+    "lock timeout": 28,
+    "Exception in ASGI application": 14
+  },
+  "cleanup": "verified reader disabled and original grants restored",
+  "reason": "paused for real-call-chain investigation; not completed 30min acceptance"
+}

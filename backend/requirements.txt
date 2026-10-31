@@ -1,52 +1,10 @@
-# Web 框架
-fastapi==0.111.0
-uvicorn[standard]==0.29.0
-python-multipart==0.0.9
-
-# 系统数据库
-sqlalchemy==2.0.30
-
-# 业务数据库驱动（保留多数据库支持）
-pymysql==1.1.1
-psycopg2-binary==2.9.9
-pyodbc==5.1.0
-oracledb==2.2.0
-pymongo==4.7.3
-
-# LangChain / LangGraph
-langchain==0.2.5
-langchain-community==0.2.5
-langgraph==0.1.19
-langchain-openai==0.1.13
-# 注：国内大模型调用直接用 langchain_openai.ChatOpenAI（所有目标服务商均为 OpenAI 兼容协议），
-# 不使用 LiteLLM/ChatLiteLLM——该封装存在已知未修复 bug，api_key/api_base 参数无法正确
-# 透传到底层请求，会导致报错要求设置 OPENAI_API_KEY 环境变量
-# （社区追踪：langchain-ai/langchain#14338, BerriAI/litellm#7573）
-
-# 向量库（嵌入式，核心变化点：替代 Qdrant，无需独立进程/Docker）
-chromadb==0.5.0
-# 修复已知 bug：chromadb 内部 posthog 调用签名与新版 posthog(>=6.0) 不兼容，
-# 会在控制台疯狂打印 "Failed to send telemetry event ... capture() takes 1
-# positional argument but 3 were given"。非技术用户看到这类英文报错会以为程序坏了。
-posthog>=2.4.0,<6.0.0
-
-# HTTP 客户端（调用国内大模型/Embedding/搜索API）
-httpx==0.27.0
-
-# 联网搜索
-tavily-python==0.3.3   # 备选方案保留（默认推荐博查，纯httpx无需额外包）
-
-# 文档解析
-pdfplumber==0.11.1
-python-docx==1.1.2
-openpyxl==3.1.4
-
-# 认证 & 加密
-# 注：直接用 bcrypt（不用 passlib[bcrypt]==1.7.4），
-# passlib 1.7.4 与 bcrypt>=4.0 存在已知兼容性 bug（AttributeError: module 'bcrypt' has no attribute '__about__'）
-python-jose[cryptography]==3.3.0
-bcrypt==4.0.1
-cryptography==42.0.8
-
-# 打包
-pyinstaller==6.7.0
+# V3 only. Exact resolved versions are recorded in requirements-v3.lock.
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+SQLAlchemy>=2.0,<2.1
+psycopg2-binary>=2.9,<3
+httpx>=0.27,<1
+python-multipart>=0.0.18,<1
+PyJWT[crypto]>=2.10,<3
+python-dotenv>=1,<2
+boto3>=1.35,<2

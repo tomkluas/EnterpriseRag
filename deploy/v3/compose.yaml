@@ -1,0 +1,49 @@
+name: enterpriserag-v3
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/v3/Dockerfile
+    image: enterpriserag-v3:local
+    env_file: .env
+    ports: ["127.0.0.1:18000:18000"]
+    depends_on:
+      database: {condition: service_healthy}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18000/health/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+  worker:
+    image: enterpriserag-v3:local
+    env_file: .env
+    volumes: ["./.env:/run/v3.env:ro"]
+    command: ["python", "-m", "app.v3.cli", "--env-file", "/run/v3.env", "worker"]
+    depends_on:
+      database: {condition: service_healthy}
+    restart: unless-stopped
+  migrate:
+    image: enterpriserag-v3:local
+    env_file: .env
+    volumes: ["./.env:/run/v3.env:ro"]
+    command: ["python", "-m", "app.v3.cli", "--env-file", "/run/v3.env", "migrate"]
+    profiles: ["migration"]
+    depends_on:
+      database: {condition: service_healthy}
+  database:
+    image: postgres:16-alpine@sha256:44c4ee9810eff91f7eab4d822642e01115b1a9eccce4bcbdde7604752d68eac6
+    environment:
+      POSTGRES_DB: enterpriserag_v3
+      POSTGRES_USER: v3
+      POSTGRES_PASSWORD: ${V3_POSTGRES_PASSWORD:?Configure V3_POSTGRES_PASSWORD}
+    volumes: ["postgres-v3:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U v3 -d enterpriserag_v3"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+volumes:
+  postgres-v3:

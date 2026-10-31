@@ -1,0 +1,66 @@
+{
+  "checked_at": "2026-10-30T13:41:42.089196+00:00",
+  "scope": "read-only runtime and existing synthetic test records",
+  "checks": [
+    {
+      "name": "anonymous-rejected",
+      "status": "passed"
+    },
+    {
+      "name": "/health",
+      "status": "passed"
+    },
+    {
+      "name": "/api/v3/me",
+      "status": "passed"
+    },
+    {
+      "name": "/api/v3/spaces",
+      "status": "passed"
+    },
+    {
+      "name": "/api/v3/backends",
+      "status": "passed"
+    },
+    {
+      "name": "/api/v3/jobs",
+      "status": "passed"
+    },
+    {
+      "name": "current-original-sha256",
+      "status": "passed"
+    },
+    {
+      "name": "real-embedding-dimension",
+      "status": "passed",
+      "dimension": 1024
+    },
+    {
+      "name": "weknora-real-filter-rerank-cited-answer",
+      "status": "passed",
+      "chunks": 2,
+      "expected_fact": 138
+    },
+    {
+      "name": "dify-real-filter-rerank-cited-answer",
+      "status": "passed",
+      "chunks": 1,
+      "expected_fact": 138
+    }
+  ],
+  "backends": [
+    {
+      "provider": "dify",
+      "usable": true,
+      "verified": false
+    },
+    {
+      "provider": "weknora",
+      "usable": true,
+      "verified": false
+    }
+  ],
+  "runtime_job_states": {
+    "completed": 1
+  }
+}

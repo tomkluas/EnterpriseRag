@@ -1,0 +1,23 @@
+{
+  "started_at": "2026-10-30T14:42:05.342535+00:00",
+  "scope": "actual FastAPI and real cloud models; isolated synthetic test database only",
+  "prior_attempt": "fixture expected retired 138; current published fixture is 246; no product change",
+  "checks": [
+    {
+      "name": "long_query",
+      "status": "passed",
+      "original_question_preserved": true,
+      "expected_fact": 246,
+      "sources_authorized": true
+    },
+    {
+      "name": "multi_turn_query",
+      "status": "passed",
+      "original_question_preserved": true,
+      "expected_fact": 246,
+      "sources_authorized": true
+    }
+  ],
+  "finished_at": "2026-10-30T14:42:27.586437+00:00",
+  "passed": true
+}

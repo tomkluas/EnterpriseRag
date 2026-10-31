@@ -1,0 +1,44 @@
+{
+  "service": "MinIO isolated protocol test only",
+  "source_commit": "07c3a429bfed433e49018cb0f78a52145d4bedeb",
+  "binary_sha256": "fb32a450d037438185511b6bbf7254ede7bcd6cf66997f48ac311fb284d6c0a6",
+  "database": "temporary SQLite testing=True",
+  "production_qualified": false,
+  "retention_clock": "explicit now + 8 days; no real 7-day wait",
+  "checks": [
+    {
+      "name": "real_service_ready_on_loopback",
+      "passed": true
+    },
+    {
+      "name": "backup_restore_real_s3_hash_roundtrip",
+      "passed": true,
+      "sha256": "c30a8b93ae9be50e147f8e1afb375c5e71454428807bfa71f2505be178ef7218"
+    },
+    {
+      "name": "restore_nonempty_prefix_rejected_existing_object_preserved",
+      "passed": true
+    },
+    {
+      "name": "conditional_put_if_none_match_412",
+      "passed": true
+    },
+    {
+      "name": "conditional_delete_if_match_412",
+      "passed": false,
+      "http_status": 204,
+      "original_preserved": false
+    }
+  ],
+  "version": "minio.exe version DEVELOPMENT.GOGET (commit-id=DEVELOPMENT.GOGET)\nRuntime: go1.24.0 windows/amd64\nLicense: GNU AGPLv3 - https://www.gnu.org/licenses/agpl-3.0.html\nCopyright: 2015-0000 MinIO, Inc.",
+  "gc_timestamp_observation": {
+    "list_modified_at": 1793453304.92,
+    "head_modified_at": 1793453304.0
+  },
+  "passed": false,
+  "failure": {
+    "type": "DomainError",
+    "message": "回收清单已过期、被修改或对象已变化，请重新盘点"
+  },
+  "cleanup": "owned process stopped; private temporary service data, SQLite, credentials and bundles removed"
+}

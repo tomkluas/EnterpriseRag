@@ -1,33 +1,84 @@
-<template>
-  <router-view />
-</template>
-
 <script setup>
+import { computed,ref,onUnmounted } from 'vue'
+import MarkdownIt from 'markdown-it'
+import DOMPurify from 'dompurify'
+import { api,setToken,answer,download } from './lib/api'
+
+const me=ref(null),access=ref(''),page=ref('chat'),busy=ref(false),error=ref(''),notice=ref('')
+const spaces=ref([]),selected=ref(''),documents=ref([]),backends=ref([]),jobs=ref([]),users=ref([]),audits=ref([])
+const conversations=ref([]),conversation=ref(''),messages=ref([]),question=ref(''),status=ref(''),streaming=ref(false),source=ref(null)
+const newSpace=ref(''),file=ref(null),versionDoc=ref(''),switchTarget=ref(''),switchInfo=ref(null)
+const backendForm=ref({provider:'weknora',base_url:'',key_ref:'V3_SECRET_WK_READ',write_key_ref:'V3_SECRET_WK_WRITE',manage_key_ref:'V3_SECRET_WK_MANAGE',collection_config:{collection_id:''}})
+const userForm=ref({id:'',role:'reader',groups:[],active:true})
+let controller=null,poller=null
+const md=new MarkdownIt({html:false,linkify:true,breaks:true})
+const render=value=>DOMPurify.sanitize(md.render(value||''))
+const activeSpace=computed(()=>spaces.value.find(s=>s.id===selected.value))
+const activeBackend=computed(()=>backends.value.find(b=>b.id===activeSpace.value?.active_backend))
+const nav=computed(()=>[{id:'chat',title:'知识问答',symbol:'⌕'},{id:'documents',title:'知识资料',symbol:'▤'},...(me.value?.role==='admin'?[{id:'backends',title:'知识底座',symbol:'⇄'},{id:'people',title:'成员与权限',symbol:'♙'},{id:'audit',title:'操作记录',symbol:'≡'}]:[]),{id:'jobs',title:'处理任务',symbol:'◷'}])
+const label={received:'已接收',queued:'等待处理',running:'处理中',backend_processing:'建立索引',ready:'可发布',published:'已发布',failed:'失败',completed:'已完成',needs_reconciliation:'待人工对账',delete_requested:'等待清理确认',cancelled:'已取消'}
+
+async function run(action){error.value='';notice.value='';busy.value=true;try{return await action()}catch(e){error.value=e.message}finally{busy.value=false}}
+async function refreshSpaces(){spaces.value=await api('/spaces');if(!spaces.value.some(s=>s.id===selected.value))selected.value=spaces.value[0]?.id||''}
+async function login(){await run(async()=>{setToken(access.value.trim());me.value=await api('/me');access.value='';await refreshSpaces();conversations.value=await api('/conversations');if(me.value.role==='admin')backends.value=await api('/backends')})}
+function logout(){controller?.abort();clearInterval(poller);setToken('');me.value=null;messages.value=[];source.value=null}
+async function openPage(id){page.value=id;source.value=null;clearInterval(poller);await run(async()=>{
+  if(id==='documents'&&selected.value)documents.value=await api(`/spaces/${selected.value}/documents`)
+  if(id==='backends')backends.value=await api('/backends')
+  if(id==='jobs'){jobs.value=await api('/jobs');poller=setInterval(()=>{if(!busy.value)api('/jobs').then(x=>jobs.value=x).catch(()=>clearInterval(poller))},5000)}
+  if(id==='people')users.value=await api('/users')
+  if(id==='audit')audits.value=await api('/audit')
+})}
+async function selectSpace(){switchInfo.value=null;await openPage(page.value)}
+async function createSpace(){await run(async()=>{const result=await api('/spaces',{method:'POST',body:{name:newSpace.value}});await refreshSpaces();selected.value=result.id;newSpace.value='';notice.value='知识库已创建'})}
+async function upload(){await run(async()=>{if(!file.value||!selected.value)throw new Error('请选择知识库和文件');const form=new FormData();form.append('space_id',selected.value);form.append('document_id',versionDoc.value);form.append('idempotency_key',crypto.randomUUID());form.append('file',file.value);await api('/documents',{method:'POST',body:form});documents.value=await api(`/spaces/${selected.value}/documents`);notice.value='文件已接收。索引完成后，可在版本列表中发布。'})}
+async function publish(doc,version){await run(async()=>{await api(`/documents/${doc}/versions/${version}/publish`,{method:'POST'});documents.value=await api(`/spaces/${selected.value}/documents`);notice.value='版本已发布'})}
+async function cancelVersion(doc,version){await run(async()=>{await api(`/documents/${doc}/versions/${version}/cancel`,{method:'POST'});documents.value=await api(`/spaces/${selected.value}/documents`);notice.value='失败草稿已取消，当前已发布版本继续生效。切换底座前请重新准备目标索引。'})}
+async function withdraw(doc){if(!confirm('撤回后资料立即停止使用，后台清理单独进行。确定撤回？'))return;await run(async()=>{await api(`/documents/${doc}`,{method:'DELETE'});documents.value=await api(`/spaces/${selected.value}/documents`)})}
+async function grant(doc){const readers=prompt('输入允许访问的成员编号，用逗号分隔；用户组写为 group:组名',doc.readers.join(','));if(readers===null)return;await run(async()=>{await api(`/documents/${doc.id}/grants`,{method:'POST',body:{readers:readers.split(',').map(x=>x.trim()).filter(Boolean),denied:doc.denied}});notice.value='访问权限已更新'})}
+async function register(){await run(async()=>{await api('/backends',{method:'POST',body:backendForm.value});backends.value=await api('/backends');notice.value='底座已登记，完成实际验证并导入签收报告后才能启用'})}
+async function prepare(){await run(async()=>{if(!selected.value||!switchTarget.value)throw new Error('请选择知识库和目标底座');const task=await api(`/spaces/${selected.value}/backend-switches`,{method:'POST',body:{target_instance_id:switchTarget.value}});switchInfo.value=await api(`/spaces/${selected.value}/backend-switches/${task.id}`)})}
+async function inspect(){await run(async()=>{switchInfo.value=await api(`/spaces/${selected.value}/backend-switches/${switchInfo.value.id}`)})}
+async function activate(){await run(async()=>{await api(`/spaces/${selected.value}/backend-switches/${switchInfo.value.id}/activate`,{method:'POST',body:{expected_route_revision:switchInfo.value.route_revision}});await refreshSpaces();notice.value='当前知识库已切换到目标底座';switchInfo.value=null})}
+async function saveUser(){await run(async()=>{await api('/users',{method:'POST',body:userForm.value});users.value=await api('/users');notice.value='成员已保存'})}
+async function newConversation(){conversation.value=(await api('/conversations',{method:'POST'})).id;messages.value=[];conversations.value=await api('/conversations')}
+async function loadConversation(id){if(streaming.value)return;conversation.value=id;messages.value=await api(`/conversations/${id}/messages`)}
+async function send(){if(!question.value.trim()||streaming.value)return;await run(async()=>{
+  if(!selected.value)throw new Error('请先创建或选择知识库');if(!conversation.value)await newConversation()
+  const query=question.value.trim();question.value='';messages.value.push({id:'pending',query,answer:'',evidence:[],state:'processing'});const item=messages.value[messages.value.length-1]
+  controller=new AbortController();streaming.value=true;status.value='正在准备'
+  try{await answer(conversation.value,{space_id:selected.value,query},controller.signal,event=>{
+    if(event.message_id)item.id=event.message_id
+    if(event.event==='status')status.value=event.data
+    if(event.event==='sources')item.evidence=event.data
+    if(event.event==='token')item.answer+=event.data
+    if(event.event==='done'){item.id=event.data.message_id;item.state='completed';status.value=''}
+    if(event.event==='error'){item.state='failed';throw new Error(event.data)}
+  })}catch(e){item.state='failed';if(e.name!=='AbortError')throw e}finally{streaming.value=false;status.value='';controller=null}
+})}
+async function feedback(item){const text=prompt('这次回答有哪些需要改进？');if(text)await run(async()=>{await api(`/messages/${item.id}/feedback`,{method:'POST',body:{text}});notice.value='反馈已保存'})}
+async function getSource(e){await run(()=>download(e.document_id,e.version_id,documents.value.find(d=>d.id===e.document_id)?.name||'原始资料'))}
+async function retry(job){await run(async()=>{await api(`/jobs/${job.id}/retry`,{method:'POST'});jobs.value=await api('/jobs')})}
+onUnmounted(()=>{controller?.abort();clearInterval(poller)})
 </script>
 
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f5;
-  color: #333;
-}
-
-:root {
-  --primary: #3b82f6;
-  --primary-dark: #2563eb;
-  --danger: #ef4444;
-  --success: #22c55e;
-  --border: #e5e7eb;
-  --bg: #ffffff;
-  --bg-secondary: #f9fafb;
-  --text: #111827;
-  --text-muted: #6b7280;
-  --sidebar-w: 260px;
-}
-</style>
+<template>
+  <main v-if="!me" class="login-shell">
+    <section class="login-intro"><div class="brand-mark">知</div><p class="wordmark">EnterpriseRag <span>V3</span></p><h1>让企业资料<br>成为可靠的答案。</h1><p>从授权的知识中查找依据，保留每一次回答的来源。</p><div class="intro-rule"></div><p class="intro-note">企业知识工作台</p></section>
+    <section class="login-panel"><div class="login-form"><span class="small-label">欢迎回来</span><h2>进入知识工作台</h2><p>使用企业身份系统签发的访问令牌登录。开发环境使用管理员配置的启动令牌。</p><label>访问令牌<textarea v-model="access" rows="3" autocomplete="off" spellcheck="false" placeholder="粘贴访问令牌"></textarea></label><p v-if="error" class="error" role="alert">{{ error }}</p><button class="primary" :disabled="busy||!access.trim()" @click="login">{{ busy?'正在验证…':'登录工作台 →' }}</button><small>令牌仅保留在当前页面内存中，关闭页面后需要重新登录。</small></div></section>
+  </main>
+  <div v-else class="workspace">
+    <aside class="sidebar"><div class="brand"><div class="brand-mark">知</div><div>EnterpriseRag<small>企业知识工作台</small></div></div><nav><button v-for="item in nav" :key="item.id" :class="{active:page===item.id}" @click="openPage(item.id)"><span>{{ item.symbol }}</span>{{ item.title }}</button></nav><div v-if="page==='chat'" class="conversation-list"><button @click="run(newConversation)">＋ 新建会话</button><button v-for="c in conversations" :key="c.id" :class="{chosen:c.id===conversation}" @click="run(()=>loadConversation(c.id))">{{ c.title==='新会话'?'知识问答 '+c.id.slice(0,5):c.title }}</button></div><div class="account"><span class="avatar">{{ me.id.slice(0,1) }}</span><div>{{ me.id }}<small>{{ me.role==='admin'?'系统管理员':me.role==='editor'?'资料管理员':'知识使用者' }}</small></div><button title="退出登录" @click="logout">↪</button></div></aside>
+    <div class="main-pane"><header><div><span class="small-label">工作空间</span><select v-model="selected" @change="selectSpace"><option value="" disabled>选择知识库</option><option v-for="s in spaces" :value="s.id" :key="s.id">{{ s.name }}</option></select></div><span class="version-tag">V3 <span>知识工作台</span></span></header>
+      <div v-if="activeSpace?.validation_profile==='local_text_pilot'" class="banner" role="status">本机文档试运行 · 已开放 {{ activeSpace?.allowed_formats?.join('、') }}；扫描件、复杂版式、精确定位和生产验收尚未完成。</div><div v-if="error" class="banner error" role="alert">{{ error }}<button @click="error=''">×</button></div><div v-if="notice" class="banner success" role="status">{{ notice }}<button @click="notice=''">×</button></div>
+      <section v-if="page==='chat'" class="chat-page"><div v-if="!messages.length" class="chat-empty"><div class="knowledge-symbol">⌕</div><span class="small-label">从资料到答案</span><h1>今天想了解什么？</h1><p>选择知识库，提出一个具体问题。<br>回答会附上可核查的资料片段。</p><div class="suggestions"><button @click="question='请介绍这份资料的主要规定，并列出依据。'">了解主要规定 <span>↗</span></button><button @click="question='这项制度适用于哪些情况？有哪些例外？'">确认适用范围 <span>↗</span></button></div></div>
+        <div v-else class="messages"><article v-for="(item,index) in messages" :key="index" class="message"><div class="question">{{ item.query }}</div><div class="answer-heading"><span class="answer-dot"></span>知识回答<span v-if="item.state==='failed'" class="muted">未完成</span></div><div class="answer-content" v-html="render(item.answer)"></div><p v-if="item.state==='processing'&&!item.answer" class="muted">{{ status||'正在处理…' }}</p><div v-if="item.evidence?.length" class="sources"><button v-for="(e,i) in item.evidence" :key="e.chunk_id" @click="source=e"><span>{{ i+1 }}</span>资料依据 {{ i+1 }}<small>{{ e.locator_level==='page'?'第 '+e.locator.page+' 页':'证据片段' }}</small></button></div><button v-if="item.state==='completed'" class="text-button" @click="feedback(item)">反馈回答</button></article></div>
+        <form class="composer" @submit.prevent="send"><textarea v-model="question" rows="2" :disabled="streaming" placeholder="输入你的问题，例如：差旅报销需要哪些材料？" @keydown.enter.exact.prevent="send"></textarea><div><span>{{ streaming?status:'仅检索你有权访问的资料' }}</span><button v-if="streaming" type="button" class="secondary" @click="controller?.abort()">停止回答</button><button v-else class="primary" :disabled="!question.trim()||!selected">发送 ↑</button></div></form><small class="chat-footnote">重要业务决策请核对原文。资料不足时，系统会明确说明。</small></section>
+      <section v-if="page==='documents'" class="content-page"><div class="page-heading"><div><span class="small-label">知识资产</span><h1>知识资料</h1><p>管理原件与版本，检查处理结果后再发布。</p></div><button class="secondary" @click="openPage('documents')">刷新状态</button></div><div class="toolbar"><input v-model="newSpace" placeholder="新知识库名称"><button class="secondary" :disabled="!newSpace.trim()||busy" @click="createSpace">创建知识库</button></div><div class="upload-panel"><div><h3>添加资料或更新版本</h3><p>支持 {{ activeSpace?.validation_profile==='local_text_pilot' ? '当前开放格式以本页提示为准，单文件最大 50 MiB。' : 'PDF、Word、Excel、TXT 与 Markdown，单文件最大 50 MiB。' }}</p></div><select v-model="versionDoc"><option value="">创建新资料</option><option v-for="d in documents" :key="d.id" :value="d.id">更新：{{ d.name }}</option></select><input type="file" :accept="activeSpace?.allowed_formats?.join(',') || '.pdf,.docx,.xlsx,.txt,.md'" @change="file=$event.target.files[0]"><button class="primary" :disabled="busy||!selected||!file" @click="upload">上传资料</button></div><div v-if="!documents.length" class="empty-row">这个知识库还没有可访问的资料。上传后可在这里查看处理与发布状态。</div><article v-for="doc in documents" :key="doc.id" class="document-row"><div class="document-heading"><div><span class="file-symbol">文</span><strong>{{ doc.name }}</strong></div><div><button class="text-button" @click="grant(doc)">访问权限</button><button class="text-button danger" @click="withdraw(doc.id)">撤回</button></div></div><div v-for="v in doc.versions" :key="v.id" class="version-row"><span>{{ new Date(v.created_at*1000).toLocaleString() }}</span><span class="badge" :class="v.state">{{ label[v.state]||v.state }}</span><span v-if="doc.current_version===v.id" class="muted">当前生效</span><button v-else-if="v.state==='ready'" class="text-button" @click="publish(doc.id,v.id)">发布此版本</button><button v-if="v.can_cancel" class="text-button" @click="cancelVersion(doc.id,v.id)">取消失败草稿</button><button class="text-button" @click="run(()=>download(doc.id,v.id,doc.name))">下载原件</button></div></article></section>
+      <section v-if="page==='backends'" class="content-page"><div class="page-heading"><div><span class="small-label">运行管理</span><h1>知识底座</h1><p>登记服务，完成验证，再按知识库切换。</p></div><span class="badge">{{ activeBackend?.provider||'尚未启用' }}</span></div><div class="backend-list"><article v-for="b in backends" :key="b.id" class="backend-card"><div class="backend-icon">{{ b.provider==='dify'?'D':'W' }}</div><h3>{{ b.provider==='dify'?'Dify':'WeKnora' }}</h3><span class="badge" :class="{ready:b.usable}">{{ b.verified?'生产验收通过':b.usable?'本机文档试运行':'等待运行验证' }}</span><p>{{ b.base_url }}</p><small>实例 {{ b.id.slice(0,10) }}</small></article><div v-if="!backends.length" class="empty-row">尚未登记知识服务。</div></div><div class="settings-section"><h2>登记服务</h2><p>服务凭据由部署环境保管，这里只填写环境变量名称。</p><div class="form-grid"><label>平台<select v-model="backendForm.provider"><option value="weknora">WeKnora</option><option value="dify">Dify</option></select></label><label>服务地址<input v-model="backendForm.base_url" placeholder="https://knowledge.company.example"></label><label>检索凭据引用<input v-model="backendForm.key_ref"></label><label>写入凭据引用<input v-model="backendForm.write_key_ref"></label><label>管理凭据引用<input v-model="backendForm.manage_key_ref"></label><label>平台知识库 ID<input v-model="backendForm.collection_config.collection_id" placeholder="管理员预先准备的知识库 ID"></label></div><button class="primary" :disabled="busy||!backendForm.base_url" @click="register">登记服务</button></div><div class="settings-section"><h2>切换当前知识库</h2><p>目标资料、权限及所需能力检查通过后才能切换。首次同步需要等待索引完成。</p><div class="toolbar"><select v-model="switchTarget"><option value="" disabled>选择目标服务</option><option v-for="b in backends" :key="b.id" :value="b.id">{{ b.provider }} — {{ b.id.slice(0,8) }}</option></select><button class="secondary" :disabled="busy||!selected||!switchTarget" @click="prepare">准备目标索引</button></div><div v-if="switchInfo" class="switch-status"><span>目标索引 {{ switchInfo.ready }} / {{ switchInfo.total }} 已就绪</span><span>{{ switchInfo.production_verified?'生产验收通过':switchInfo.verified?'本机文档试运行':'服务尚未验证' }}</span><button class="secondary" @click="inspect">重新检查</button><button class="primary" :disabled="busy||!switchInfo.verified||switchInfo.ready!==switchInfo.total" @click="activate">执行切换</button></div></div></section>
+      <section v-if="page==='jobs'" class="content-page"><div class="page-heading"><div><span class="small-label">运行状态</span><h1>处理任务</h1><p>处理中不代表资料已发布；未知远端结果需要先对账。</p></div><button class="secondary" @click="openPage('jobs')">刷新</button></div><table><thead><tr><th>任务</th><th>状态</th><th>尝试次数</th><th>原因</th><th></th></tr></thead><tbody><tr v-for="job in jobs" :key="job.id"><td>{{ job.kind }}<small>{{ job.id.slice(0,10) }}</small></td><td><span class="badge" :class="job.state">{{ label[job.state]||job.state }}</span></td><td>{{ job.attempts }}</td><td>{{ job.error||'—' }}</td><td><button v-if="job.state==='failed'" class="text-button" @click="retry(job)">重试</button></td></tr></tbody></table><div v-if="!jobs.length" class="empty-row">暂无处理任务。</div></section>
+      <section v-if="page==='people'" class="content-page"><div class="page-heading"><div><span class="small-label">访问管理</span><h1>成员与权限</h1><p>系统角色决定可执行的操作，资料访问权单独授予。</p></div></div><div class="toolbar"><input v-model="userForm.id" placeholder="企业账号 subject"><select v-model="userForm.role"><option value="reader">知识使用者</option><option value="editor">资料管理员</option><option value="admin">系统管理员</option></select><label class="inline"><input type="checkbox" v-model="userForm.active">启用</label><button class="primary" @click="saveUser">保存成员</button></div><table><thead><tr><th>成员</th><th>角色</th><th>状态</th></tr></thead><tbody><tr v-for="u in users" :key="u.id"><td>{{ u.id }}</td><td>{{ u.role }}</td><td>{{ u.active?'启用':'停用' }}</td></tr></tbody></table></section>
+      <section v-if="page==='audit'" class="content-page"><div class="page-heading"><div><span class="small-label">追溯</span><h1>操作记录</h1><p>查看资料与配置变更的操作者和时间。</p></div></div><table><thead><tr><th>时间</th><th>操作者</th><th>操作</th><th>资源</th></tr></thead><tbody><tr v-for="a in audits" :key="a.id"><td>{{ new Date(a.created_at*1000).toLocaleString() }}</td><td>{{ a.actor }}</td><td>{{ a.action }}</td><td>{{ a.resource_id.slice(0,14) }}</td></tr></tbody></table></section>
+    </div><aside v-if="source" class="source-drawer"><button class="drawer-close" @click="source=null">×</button><span class="small-label">回答依据</span><h2>证据片段</h2><p class="muted">{{ source.locator_level==='page'?'第 '+source.locator.page+' 页':'原文页码未确认，以下为实际检索片段' }}</p><blockquote>{{ source.content }}</blockquote><small>版本 {{ source.version_id.slice(0,12) }}</small><button class="primary" @click="getSource(source)">下载原文</button></aside>
+  </div>
+</template>

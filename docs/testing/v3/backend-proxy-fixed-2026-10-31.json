@@ -1,0 +1,10 @@
+{
+  "started_at": "2026-10-31T00:19:12.258753+00:00",
+  "finished_at": "2026-10-31T00:19:41.595636+00:00",
+  "run": 182,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "passed": true,
+  "scope": "V3 all backend regression after CONNECT fix; isolated PostgreSQL; cloud probes separately recorded"
+}

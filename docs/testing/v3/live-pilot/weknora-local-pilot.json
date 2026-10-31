@@ -1,0 +1,116 @@
+{
+  "profile": "local_text_pilot",
+  "audit_level": "runtime_local_pilot",
+  "instance_id": "cdbad2403be64b3b9d0ed6d7df013afd",
+  "provider": "weknora",
+  "commit": "f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7",
+  "image_digest": "sha256:25b20959b7456f7842ef55ed4feff3694dbd0c6f8af4117c1fb3c5dec6bdf14d",
+  "approved_by": "local deployment under explicit user authorization",
+  "allowed_formats": [
+    ".docx",
+    ".md",
+    ".pdf",
+    ".txt",
+    ".xlsx"
+  ],
+  "format_checks": [
+    {
+      "provider": "weknora",
+      "extension": ".docx",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18080",
+      "collection_id": "d3c82d99-64ca-48b6-89e1-76fc1a9d9876",
+      "image_digest": "sha256:25b20959b7456f7842ef55ed4feff3694dbd0c6f8af4117c1fb3c5dec6bdf14d",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    },
+    {
+      "provider": "weknora",
+      "extension": ".xlsx",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18080",
+      "collection_id": "d3c82d99-64ca-48b6-89e1-76fc1a9d9876",
+      "image_digest": "sha256:25b20959b7456f7842ef55ed4feff3694dbd0c6f8af4117c1fb3c5dec6bdf14d",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    },
+    {
+      "provider": "weknora",
+      "extension": ".pdf",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18080",
+      "collection_id": "d3c82d99-64ca-48b6-89e1-76fc1a9d9876",
+      "image_digest": "sha256:25b20959b7456f7842ef55ed4feff3694dbd0c6f8af4117c1fb3c5dec6bdf14d",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    }
+  ],
+  "capabilities": [
+    "segment"
+  ],
+  "checks": [
+    {
+      "id": "LOCAL-01",
+      "status": "passed",
+      "name": "real-model-interfaces"
+    },
+    {
+      "id": "LOCAL-02",
+      "status": "passed",
+      "name": "positive-filtered-recall"
+    },
+    {
+      "id": "LOCAL-03",
+      "status": "passed",
+      "name": "credential-scope"
+    },
+    {
+      "id": "LOCAL-04",
+      "status": "passed",
+      "name": "forbidden-not-sent-to-model"
+    },
+    {
+      "id": "LOCAL-05",
+      "status": "passed",
+      "name": "real-roundtrip-and-draft-publish"
+    },
+    {
+      "id": "LOCAL-06",
+      "status": "passed",
+      "name": "empty-and-invalid-scope-contracts"
+    },
+    {
+      "id": "LOCAL-07",
+      "status": "passed",
+      "name": "revocation-and-history"
+    },
+    {
+      "id": "LOCAL-08",
+      "status": "passed",
+      "name": "durable-jobs-and-concurrency"
+    }
+  ],
+  "test_database": "v3_live_db2b1d81113346c9935bbb74bc19e9aa",
+  "regression_tests": 59,
+  "model_mode": "real_cloud_models",
+  "production_g0": "not_complete",
+  "configuration": {
+    "question_generation": true,
+    "dify_compat_patch": false
+  },
+  "observed_model_dispatches": {
+    "rerank": 6,
+    "chat": 6
+  },
+  "not_verified": [
+    "scanned PDF OCR",
+    "complex/cross-page tables",
+    "exact page/cell alignment",
+    "production capacity",
+    "full recovery",
+    "full G0"
+  ]
+}

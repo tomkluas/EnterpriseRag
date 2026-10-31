@@ -1,0 +1,116 @@
+{
+  "profile": "local_text_pilot",
+  "audit_level": "runtime_local_pilot",
+  "instance_id": "bdc5261883a7457f85e37698ac18322b",
+  "provider": "dify",
+  "commit": "50abea97062110044f15d0e03ccecadd9ccc87ca",
+  "image_digest": "sha256:5a372d832406893b0508982f1011cd1c18ca379d74730dce004391ac70d186d1",
+  "approved_by": "local deployment under explicit user authorization",
+  "allowed_formats": [
+    ".docx",
+    ".md",
+    ".pdf",
+    ".txt",
+    ".xlsx"
+  ],
+  "format_checks": [
+    {
+      "provider": "dify",
+      "extension": ".docx",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18082",
+      "collection_id": "eb722a30-d5ff-4d05-bb4f-15fd8f869a0d",
+      "image_digest": "sha256:5a372d832406893b0508982f1011cd1c18ca379d74730dce004391ac70d186d1",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    },
+    {
+      "provider": "dify",
+      "extension": ".xlsx",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18082",
+      "collection_id": "eb722a30-d5ff-4d05-bb4f-15fd8f869a0d",
+      "image_digest": "sha256:5a372d832406893b0508982f1011cd1c18ca379d74730dce004391ac70d186d1",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    },
+    {
+      "provider": "dify",
+      "extension": ".pdf",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18082",
+      "collection_id": "eb722a30-d5ff-4d05-bb4f-15fd8f869a0d",
+      "image_digest": "sha256:5a372d832406893b0508982f1011cd1c18ca379d74730dce004391ac70d186d1",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    }
+  ],
+  "capabilities": [
+    "segment"
+  ],
+  "checks": [
+    {
+      "id": "LOCAL-01",
+      "status": "passed",
+      "name": "real-model-interfaces"
+    },
+    {
+      "id": "LOCAL-02",
+      "status": "passed",
+      "name": "positive-filtered-recall"
+    },
+    {
+      "id": "LOCAL-03",
+      "status": "passed",
+      "name": "credential-scope"
+    },
+    {
+      "id": "LOCAL-04",
+      "status": "passed",
+      "name": "forbidden-not-sent-to-model"
+    },
+    {
+      "id": "LOCAL-05",
+      "status": "passed",
+      "name": "real-roundtrip-and-draft-publish"
+    },
+    {
+      "id": "LOCAL-06",
+      "status": "passed",
+      "name": "empty-and-invalid-scope-contracts"
+    },
+    {
+      "id": "LOCAL-07",
+      "status": "passed",
+      "name": "revocation-and-history"
+    },
+    {
+      "id": "LOCAL-08",
+      "status": "passed",
+      "name": "durable-jobs-and-concurrency"
+    }
+  ],
+  "test_database": "v3_live_db2b1d81113346c9935bbb74bc19e9aa",
+  "regression_tests": 59,
+  "model_mode": "real_cloud_models",
+  "production_g0": "not_complete",
+  "configuration": {
+    "question_generation": false,
+    "dify_compat_patch": true
+  },
+  "observed_model_dispatches": {
+    "rerank": 6,
+    "chat": 6
+  },
+  "not_verified": [
+    "scanned PDF OCR",
+    "complex/cross-page tables",
+    "exact page/cell alignment",
+    "production capacity",
+    "full recovery",
+    "full G0"
+  ]
+}

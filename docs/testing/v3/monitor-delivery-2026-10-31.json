@@ -1,0 +1,20 @@
+{
+  "started_at": "2026-10-30T23:50:30.000310+00:00",
+  "scope": "synthetic isolated PG schema and loopback HTTP receiver only",
+  "checks": [
+    {
+      "name": "503-retried-and-204-delivered",
+      "status": "passed"
+    },
+    {
+      "name": "delivered-event-not-resent",
+      "status": "passed"
+    },
+    {
+      "name": "resolved-event-delivered",
+      "status": "passed"
+    }
+  ],
+  "passed": true,
+  "finished_at": "2026-10-30T23:50:31.186140+00:00"
+}

@@ -1,0 +1,6 @@
+{
+  "stage": "single_authorized_binding_retrieve",
+  "elapsed_s": 30.047000000000025,
+  "exception_type": "BackendError",
+  "code": "timeout_unknown"
+}

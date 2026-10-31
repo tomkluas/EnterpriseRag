@@ -1,0 +1,9 @@
+{
+  "checked_at": "2026-10-30T23:55:01.847233+00:00",
+  "readiness": true,
+  "anonymous_rejected": true,
+  "worker_healthy": 1,
+  "alerts": [],
+  "external_alert_delivery": "disabled",
+  "production_verified": false
+}

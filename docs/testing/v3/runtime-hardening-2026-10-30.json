@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-10-30T14:37:41.517469+00:00",
+  "checks": [
+    {
+      "name": "readiness",
+      "status": "passed",
+      "scope": "api_database_only"
+    },
+    {
+      "name": "operations-rejects-anonymous",
+      "status": "passed"
+    },
+    {
+      "name": "operations-admin",
+      "status": "passed",
+      "alerts": [],
+      "jobs": {
+        "completed": 1
+      }
+    },
+    {
+      "name": "production-qualification-not-expanded",
+      "status": "passed"
+    }
+  ]
+}

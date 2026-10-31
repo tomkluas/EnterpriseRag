@@ -1,0 +1,6 @@
+{
+  "scope": "temporary in-memory history response mutation only; no business code modification",
+  "expected_failure_detected": true,
+  "failures": 1,
+  "errors": 0
+}

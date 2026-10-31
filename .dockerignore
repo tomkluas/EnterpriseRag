@@ -1,0 +1,16 @@
+.git
+**/.venv
+**/.venv-v3
+**/node_modules
+**/dist
+**/build
+**/__pycache__
+**/*.pyc
+data
+data-v3
+release
+models
+.env
+**/.env
+**/*.local
+.tmp-real-s3-build

@@ -1,0 +1,149 @@
+{
+  "at": "2026-10-31T00:10:10.602727+00:00",
+  "audit_level": "isolated_real_fault_injection",
+  "test_database": "v3_live_db2b1d81113346c9935bbb74bc19e9aa",
+  "schema": "v3_reconcile_f0ad83d7d1f24330b0baaf3d67ccf191",
+  "tenant": "reconcile_c201dc17e25241dd9918a41e420fba8d",
+  "checks": [
+    {
+      "provider": "weknora",
+      "instance_id": "cdbad2403be64b3b9d0ed6d7df013afd",
+      "submit_calls": 1,
+      "upload_receipts": [
+        {
+          "remote_id": "8bb9b140-bf1e-4191-8fa5-a45c0412da70",
+          "batch_id": ""
+        }
+      ],
+      "status": "passed",
+      "recovered": true,
+      "initial_job_state": "needs_reconciliation",
+      "initial_error_code": "timeout_unknown",
+      "submission_proof_saved": true,
+      "job_state": "completed",
+      "error_code": "",
+      "replica_state": "ready",
+      "chunks": 1,
+      "reconciliation": {
+        "remote_id": "8bb9b140-bf1e-4191-8fa5-a45c0412da70",
+        "sha256": "68012e339de806878dd2402de1d3f2705adb4a6ac5b2e828b94bd72f9f366c5b",
+        "binding_id": "b34d57b9d83d4d4c92b00fecd9a92ab3",
+        "verified_at": 1793405413.5772882,
+        "basis": "unique_binding_metadata_and_original_sha256"
+      },
+      "receipt_recovered": true,
+      "remote_receipt_recovered": true,
+      "index_ready": true
+    },
+    {
+      "provider": "dify",
+      "instance_id": "bdc5261883a7457f85e37698ac18322b",
+      "submit_calls": 1,
+      "upload_receipts": [
+        {
+          "remote_id": "7e7a7e23-d183-4a6f-8ba6-3c3c97b999e8",
+          "batch_id": "20261031001019749046"
+        }
+      ],
+      "status": "passed",
+      "recovered": true,
+      "initial_job_state": "needs_reconciliation",
+      "initial_error_code": "timeout_unknown",
+      "submission_proof_saved": true,
+      "job_state": "completed",
+      "error_code": "",
+      "replica_state": "ready",
+      "chunks": 1,
+      "reconciliation": {
+        "remote_id": "7e7a7e23-d183-4a6f-8ba6-3c3c97b999e8",
+        "sha256": "2660e769af23fe7aba7f7e51f1cbb9eff66fbc54385b351d5aed04ab0d29e378",
+        "binding_id": "bd9c6a18b4dd4dcf86b83b80be73b1d5",
+        "verified_at": 1793405422.007464,
+        "basis": "unique_upload_filename_and_original_sha256"
+      },
+      "receipt_recovered": true,
+      "remote_receipt_recovered": true,
+      "index_ready": true
+    }
+  ],
+  "production_qualification_changed": false,
+  "remote_authorization_changed": false,
+  "cleanup": [
+    {
+      "provider": "weknora",
+      "remote_id": "8bb9b140-bf1e-4191-8fa5-a45c0412da70",
+      "confirmed": true
+    },
+    {
+      "provider": "dify",
+      "remote_id": "7e7a7e23-d183-4a6f-8ba6-3c3c97b999e8",
+      "confirmed": true
+    }
+  ],
+  "schema_removed": true,
+  "elapsed_seconds": 12.766,
+  "latest_checks": [
+    {
+      "provider": "weknora",
+      "instance_id": "cdbad2403be64b3b9d0ed6d7df013afd",
+      "submit_calls": 1,
+      "upload_receipts": [
+        {
+          "remote_id": "8bb9b140-bf1e-4191-8fa5-a45c0412da70",
+          "batch_id": ""
+        }
+      ],
+      "status": "passed",
+      "recovered": true,
+      "initial_job_state": "needs_reconciliation",
+      "initial_error_code": "timeout_unknown",
+      "submission_proof_saved": true,
+      "job_state": "completed",
+      "error_code": "",
+      "replica_state": "ready",
+      "chunks": 1,
+      "reconciliation": {
+        "remote_id": "8bb9b140-bf1e-4191-8fa5-a45c0412da70",
+        "sha256": "68012e339de806878dd2402de1d3f2705adb4a6ac5b2e828b94bd72f9f366c5b",
+        "binding_id": "b34d57b9d83d4d4c92b00fecd9a92ab3",
+        "verified_at": 1793405413.5772882,
+        "basis": "unique_binding_metadata_and_original_sha256"
+      },
+      "receipt_recovered": true,
+      "remote_receipt_recovered": true,
+      "index_ready": true
+    },
+    {
+      "provider": "dify",
+      "instance_id": "bdc5261883a7457f85e37698ac18322b",
+      "submit_calls": 1,
+      "upload_receipts": [
+        {
+          "remote_id": "7e7a7e23-d183-4a6f-8ba6-3c3c97b999e8",
+          "batch_id": "20261031001019749046"
+        }
+      ],
+      "status": "passed",
+      "recovered": true,
+      "initial_job_state": "needs_reconciliation",
+      "initial_error_code": "timeout_unknown",
+      "submission_proof_saved": true,
+      "job_state": "completed",
+      "error_code": "",
+      "replica_state": "ready",
+      "chunks": 1,
+      "reconciliation": {
+        "remote_id": "7e7a7e23-d183-4a6f-8ba6-3c3c97b999e8",
+        "sha256": "2660e769af23fe7aba7f7e51f1cbb9eff66fbc54385b351d5aed04ab0d29e378",
+        "binding_id": "bd9c6a18b4dd4dcf86b83b80be73b1d5",
+        "verified_at": 1793405422.007464,
+        "basis": "unique_upload_filename_and_original_sha256"
+      },
+      "receipt_recovered": true,
+      "remote_receipt_recovered": true,
+      "index_ready": true
+    }
+  ],
+  "receipt_probe_passed": true,
+  "passed": true
+}

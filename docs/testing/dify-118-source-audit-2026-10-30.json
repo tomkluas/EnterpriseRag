@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "audited_at": "2026-10-30T08:17:46.473Z",
+  "upstream": "https://github.com/langgenius/dify",
+  "tag": "1.18.0",
+  "commit": "50abea97062110044f15d0e03ccecadd9ccc87ca",
+  "audit_level": "static_source_contract",
+  "runtime_integration": "not_run",
+  "upstream_tests": "not_run",
+  "summary": {
+    "checked": 16,
+    "found": 16
+  },
+  "checks": [
+    {
+      "id": "retrieve_route",
+      "file": "api/controllers/service_api/dataset/hit_testing.py",
+      "line": 28,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/controllers/service_api/dataset/hit_testing.py#L28"
+    },
+    {
+      "id": "upload_route",
+      "file": "api/controllers/service_api/dataset/document.py",
+      "line": 713,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/controllers/service_api/dataset/document.py#L713"
+    },
+    {
+      "id": "batch_status_route",
+      "file": "api/controllers/service_api/dataset/document.py",
+      "line": 1143,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/controllers/service_api/dataset/document.py#L1143"
+    },
+    {
+      "id": "delete_status",
+      "file": "api/controllers/service_api/dataset/document.py",
+      "line": 1536,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/controllers/service_api/dataset/document.py#L1536"
+    },
+    {
+      "id": "metadata_write_route",
+      "file": "api/controllers/service_api/dataset/metadata.py",
+      "line": 317,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/controllers/service_api/dataset/metadata.py#L317"
+    },
+    {
+      "id": "retrieval_schema_accepts_filter",
+      "file": "api/services/knowledge/entities/knowledge_entities.py",
+      "line": 171,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/services/knowledge/entities/knowledge_entities.py#L171"
+    },
+    {
+      "id": "metadata_in_condition",
+      "file": "api/core/rag/retrieval/dataset_retrieval.py",
+      "line": 1734,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/core/rag/retrieval/dataset_retrieval.py#L1734"
+    },
+    {
+      "id": "metadata_sql_filter",
+      "file": "api/core/rag/retrieval/dataset_retrieval.py",
+      "line": 1747,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/core/rag/retrieval/dataset_retrieval.py#L1747"
+    },
+    {
+      "id": "metadata_ids_before_retrieval",
+      "file": "api/services/hit_testing_service.py",
+      "line": 163,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/services/hit_testing_service.py#L163"
+    },
+    {
+      "id": "no_matches_return_empty",
+      "file": "api/services/hit_testing_service.py",
+      "line": 145,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/services/hit_testing_service.py#L145"
+    },
+    {
+      "id": "vector_scope_forwarded",
+      "file": "api/core/rag/datasource/retrieval_service.py",
+      "line": 335,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/core/rag/datasource/retrieval_service.py#L335"
+    },
+    {
+      "id": "fulltext_scope_forwarded",
+      "file": "api/core/rag/datasource/retrieval_service.py",
+      "line": 434,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/core/rag/datasource/retrieval_service.py#L434"
+    },
+    {
+      "id": "dataset_scoped_key_check",
+      "file": "api/controllers/service_api/wraps.py",
+      "line": 369,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/controllers/service_api/wraps.py#L369"
+    },
+    {
+      "id": "query_limit_250",
+      "file": "api/controllers/console/datasets/hit_testing_base.py",
+      "line": 34,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/controllers/console/datasets/hit_testing_base.py#L34"
+    },
+    {
+      "id": "response_document_id",
+      "file": "api/fields/hit_testing_fields.py",
+      "line": 30,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/fields/hit_testing_fields.py#L30"
+    },
+    {
+      "id": "response_segment_position",
+      "file": "api/fields/hit_testing_fields.py",
+      "line": 29,
+      "status": "source_pattern_found",
+      "source": "https://github.com/langgenius/dify/blob/50abea97062110044f15d0e03ccecadd9ccc87ca/api/fields/hit_testing_fields.py#L29"
+    }
+  ],
+  "manifest": [
+    {
+      "file": "api/controllers/service_api/dataset/hit_testing.py",
+      "sha256": "6ef29666e8360c14187fe6e2d81ba42d272fd9feeb567bf74fe29ad985138afe"
+    },
+    {
+      "file": "api/controllers/service_api/dataset/document.py",
+      "sha256": "beda914091d2e3b57f9e380da547a082e0753e2688aa57769f3ddb0a58255752"
+    },
+    {
+      "file": "api/controllers/service_api/dataset/metadata.py",
+      "sha256": "f971734ae35dccbdf15805509a5ed229123a0ade7eb0ec87c0a0e93c41eb4e22"
+    },
+    {
+      "file": "api/services/knowledge/entities/knowledge_entities.py",
+      "sha256": "7d88bdfdd31e62c3024fe6a95dea748a944a7823ca8ad30657892ca639652c47"
+    },
+    {
+      "file": "api/core/rag/retrieval/dataset_retrieval.py",
+      "sha256": "c084a1d2c4958efc332e99fdcf129c7bcfbfd0d49a9a62702d82279d9471db57"
+    },
+    {
+      "file": "api/services/hit_testing_service.py",
+      "sha256": "2b92922c85ba7000c23a847e4874ac93e33faf3e114ab876595280206a1317e3"
+    },
+    {
+      "file": "api/core/rag/datasource/retrieval_service.py",
+      "sha256": "b05ac90fae437640bc0401ef979db395254773172ff3e3420fd1d9ca2452dc77"
+    },
+    {
+      "file": "api/controllers/service_api/wraps.py",
+      "sha256": "de6bded8e7230418ae4c0406cd686e5400986633b8eb9a5142d8b07db187b8e4"
+    },
+    {
+      "file": "api/controllers/console/datasets/hit_testing_base.py",
+      "sha256": "9a12f7bd47aa0d2ff9d4308563e35ef8e023591e64b499df6ca6fd16fa10ee12"
+    },
+    {
+      "file": "api/fields/hit_testing_fields.py",
+      "sha256": "4d4419725866d3c803c547f4976d47333337c18eb7def244bfb8e6f25043c18e"
+    }
+  ],
+  "limits": [
+    "Patterns prove source constructs, not runtime authorization or retrieval quality.",
+    "Vector/fulltext filters are confirmed at dispatch; selected storage implementation still needs G0 validation.",
+    "Precise original-page navigation and OCR parity with WeKnora are not established.",
+    "The caller must authenticate the downloaded source revision; this script does not."
+  ]
+}

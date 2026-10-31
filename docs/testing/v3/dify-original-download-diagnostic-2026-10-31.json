@@ -1,0 +1,25 @@
+{
+  "provider": "dify",
+  "basis": "existing_allowed_current_ready_synthetic_binding",
+  "metadata_http_status": 200,
+  "instance_origin": {
+    "scheme": "http",
+    "hostname": "127.0.0.1",
+    "port": 18082
+  },
+  "returned_origin": {
+    "scheme": "",
+    "hostname": null,
+    "port": null
+  },
+  "same_origin": false,
+  "anonymous_original_http_status": 200,
+  "files_url_configuration": {
+    "FILES_URL": "",
+    "INTERNAL_FILES_URL": "",
+    "SERVICE_API_URL": ""
+  },
+  "returned_url_kind": "root_relative",
+  "resolved_same_origin": true,
+  "classification": "root_relative_signed_url_rejected_by_adapter"
+}

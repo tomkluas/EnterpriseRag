@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-10-31T00:09:34.256395+00:00",
+  "checks": [
+    {
+      "name": "embedding",
+      "http_status": 200,
+      "passed": true,
+      "dimension": 1024,
+      "elapsed_seconds": 0.281
+    },
+    {
+      "name": "chat",
+      "http_status": 200,
+      "passed": true,
+      "elapsed_seconds": 0.578
+    }
+  ]
+}

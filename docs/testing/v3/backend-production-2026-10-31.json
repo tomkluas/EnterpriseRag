@@ -1,0 +1,10 @@
+{
+  "started_at": "2026-10-30T23:55:05.359982+00:00",
+  "finished_at": "2026-10-30T23:55:30.811679+00:00",
+  "run": 178,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "passed": true,
+  "scope": "all backend V3 tests with isolated PostgreSQL; external services mocked except separate real probes"
+}

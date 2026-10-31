@@ -1,0 +1,258 @@
+{
+  "at": "2026-10-30T23:52:26.413235+00:00",
+  "audit_level": "isolated_real_fault_injection",
+  "test_database": "v3_live_db2b1d81113346c9935bbb74bc19e9aa",
+  "schema": "v3_reconcile_90522ac8e1a649e5a06f516bee6850a4",
+  "tenant": "reconcile_cdfce16390d1479eb79e3d1caa577404",
+  "checks": [
+    {
+      "provider": "weknora",
+      "instance_id": "cdbad2403be64b3b9d0ed6d7df013afd",
+      "submit_calls": 1,
+      "upload_receipts": [
+        {
+          "remote_id": "0bddd31f-4395-48cb-9fc8-02622a9f5719",
+          "batch_id": ""
+        }
+      ],
+      "status": "timeout",
+      "recovered": false,
+      "initial_job_state": "needs_reconciliation",
+      "initial_error_code": "timeout_unknown",
+      "submission_proof_saved": true,
+      "job_state": "queued",
+      "error_code": "",
+      "replica_state": "backend_processing",
+      "chunks": 0,
+      "remote_receipt_recovered": true,
+      "index_ready": false
+    },
+    {
+      "provider": "dify",
+      "instance_id": "bdc5261883a7457f85e37698ac18322b",
+      "submit_calls": 1,
+      "upload_receipts": [
+        {
+          "remote_id": "c7cf5c94-0e86-4e39-b0b9-0346cb096ed6",
+          "batch_id": "20261030234847628769"
+        }
+      ],
+      "status": "blocked",
+      "recovered": false,
+      "initial_job_state": "needs_reconciliation",
+      "initial_error_code": "timeout_unknown",
+      "submission_proof_saved": true,
+      "job_state": "needs_reconciliation",
+      "error_code": "reconciliation_original_unavailable",
+      "replica_state": "submitting",
+      "chunks": 0,
+      "reconciliation": null,
+      "receipt_recovered": false,
+      "remote_receipt_recovered": false,
+      "index_ready": false
+    },
+    {
+      "provider": "dify",
+      "instance_id": "bdc5261883a7457f85e37698ac18322b",
+      "submit_calls": 1,
+      "upload_receipts": [
+        {
+          "remote_id": "4d7d1c61-ba84-4ad6-8487-d8054962eb8d",
+          "batch_id": "20261030235227177771"
+        }
+      ],
+      "status": "receipt_recovered",
+      "recovered": false,
+      "initial_job_state": "needs_reconciliation",
+      "initial_error_code": "timeout_unknown",
+      "submission_proof_saved": true,
+      "job_state": "queued",
+      "error_code": "",
+      "replica_state": "backend_processing",
+      "chunks": 0,
+      "reconciliation": {
+        "remote_id": "4d7d1c61-ba84-4ad6-8487-d8054962eb8d",
+        "sha256": "155c2f97a959101174f9f216b73545be9a62bbc2c2300b1c394fddb0de9252f0",
+        "binding_id": "44a06133aff742469fbc6edf0fa16198",
+        "verified_at": 1793404349.432882,
+        "basis": "unique_upload_filename_and_original_sha256"
+      },
+      "receipt_recovered": true,
+      "remote_receipt_recovered": true,
+      "index_ready": false
+    }
+  ],
+  "production_qualification_changed": false,
+  "remote_authorization_changed": false,
+  "previous_runs": [
+    {
+      "at": "2026-10-30T23:48:45.968403+00:00",
+      "audit_level": "isolated_real_fault_injection",
+      "test_database": "v3_live_db2b1d81113346c9935bbb74bc19e9aa",
+      "schema": "v3_reconcile_5c19a538bb11414dbd71fbf9e1d2e7b3",
+      "tenant": "reconcile_773ecc2d3e2a4457a24dfbd94619d313",
+      "checks": [
+        {
+          "provider": "weknora",
+          "instance_id": "cdbad2403be64b3b9d0ed6d7df013afd",
+          "submit_calls": 1,
+          "upload_receipts": [
+            {
+              "remote_id": "0bddd31f-4395-48cb-9fc8-02622a9f5719",
+              "batch_id": ""
+            }
+          ],
+          "status": "timeout",
+          "recovered": false,
+          "initial_job_state": "needs_reconciliation",
+          "initial_error_code": "timeout_unknown",
+          "submission_proof_saved": true,
+          "job_state": "queued",
+          "error_code": "",
+          "replica_state": "backend_processing",
+          "chunks": 0,
+          "remote_receipt_recovered": true,
+          "index_ready": false
+        },
+        {
+          "provider": "dify",
+          "instance_id": "bdc5261883a7457f85e37698ac18322b",
+          "submit_calls": 1,
+          "upload_receipts": [
+            {
+              "remote_id": "c7cf5c94-0e86-4e39-b0b9-0346cb096ed6",
+              "batch_id": "20261030234847628769"
+            }
+          ],
+          "status": "blocked",
+          "recovered": false,
+          "initial_job_state": "needs_reconciliation",
+          "initial_error_code": "timeout_unknown",
+          "submission_proof_saved": true,
+          "job_state": "needs_reconciliation",
+          "error_code": "reconciliation_original_unavailable",
+          "replica_state": "submitting",
+          "chunks": 0,
+          "reconciliation": null,
+          "receipt_recovered": false,
+          "remote_receipt_recovered": false,
+          "index_ready": false
+        }
+      ],
+      "production_qualification_changed": false,
+      "remote_authorization_changed": false,
+      "previous_runs": [
+        {
+          "at": "2026-10-30T23:46:36.123946+00:00",
+          "audit_level": "isolated_real_fault_injection",
+          "test_database": "v3_live_db2b1d81113346c9935bbb74bc19e9aa",
+          "schema": "v3_reconcile_fd39647d17a543fdbe6e2476171e9f20",
+          "tenant": "reconcile_20434610fb9e49b8bccfabcc836a6c59",
+          "checks": [
+            {
+              "provider": "weknora",
+              "instance_id": "cdbad2403be64b3b9d0ed6d7df013afd",
+              "submit_calls": 1,
+              "upload_receipts": [
+                {
+                  "remote_id": "0bddd31f-4395-48cb-9fc8-02622a9f5719",
+                  "batch_id": ""
+                }
+              ],
+              "status": "not_run",
+              "recovered": false,
+              "initial_job_state": "needs_reconciliation",
+              "initial_error_code": "timeout_unknown",
+              "submission_proof_saved": true,
+              "job_state": "queued",
+              "error_code": "",
+              "replica_state": "backend_processing",
+              "chunks": 0
+            }
+          ],
+          "production_qualification_changed": false,
+          "remote_authorization_changed": false,
+          "probe_error_code": "probe_deadline_exceeded",
+          "cleanup": [
+            {
+              "provider": "weknora",
+              "remote_id": "0bddd31f-4395-48cb-9fc8-02622a9f5719",
+              "confirmed": true
+            }
+          ],
+          "schema_removed": true,
+          "elapsed_seconds": 86.062,
+          "passed": false
+        }
+      ],
+      "cleanup": [
+        {
+          "provider": "weknora",
+          "remote_id": "0bddd31f-4395-48cb-9fc8-02622a9f5719",
+          "confirmed": true
+        },
+        {
+          "provider": "dify",
+          "remote_id": "c7cf5c94-0e86-4e39-b0b9-0346cb096ed6",
+          "confirmed": true
+        }
+      ],
+      "schema_removed": true,
+      "elapsed_seconds": 4.484,
+      "passed": false
+    }
+  ],
+  "cleanup": [
+    {
+      "provider": "weknora",
+      "remote_id": "0bddd31f-4395-48cb-9fc8-02622a9f5719",
+      "confirmed": true
+    },
+    {
+      "provider": "dify",
+      "remote_id": "c7cf5c94-0e86-4e39-b0b9-0346cb096ed6",
+      "confirmed": true
+    },
+    {
+      "provider": "dify",
+      "remote_id": "4d7d1c61-ba84-4ad6-8487-d8054962eb8d",
+      "confirmed": true
+    }
+  ],
+  "schema_removed": true,
+  "elapsed_seconds": 3.172,
+  "latest_checks": [
+    {
+      "provider": "dify",
+      "instance_id": "bdc5261883a7457f85e37698ac18322b",
+      "submit_calls": 1,
+      "upload_receipts": [
+        {
+          "remote_id": "4d7d1c61-ba84-4ad6-8487-d8054962eb8d",
+          "batch_id": "20261030235227177771"
+        }
+      ],
+      "status": "receipt_recovered",
+      "recovered": false,
+      "initial_job_state": "needs_reconciliation",
+      "initial_error_code": "timeout_unknown",
+      "submission_proof_saved": true,
+      "job_state": "queued",
+      "error_code": "",
+      "replica_state": "backend_processing",
+      "chunks": 0,
+      "reconciliation": {
+        "remote_id": "4d7d1c61-ba84-4ad6-8487-d8054962eb8d",
+        "sha256": "155c2f97a959101174f9f216b73545be9a62bbc2c2300b1c394fddb0de9252f0",
+        "binding_id": "44a06133aff742469fbc6edf0fa16198",
+        "verified_at": 1793404349.432882,
+        "basis": "unique_upload_filename_and_original_sha256"
+      },
+      "receipt_recovered": true,
+      "remote_receipt_recovered": true,
+      "index_ready": false
+    }
+  ],
+  "receipt_probe_passed": true,
+  "passed": false
+}

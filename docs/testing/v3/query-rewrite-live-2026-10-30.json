@@ -1,0 +1,21 @@
+{
+  "started_at": "2026-10-30T14:35:49.162235+00:00",
+  "scope": "read-only isolated synthetic records with real cloud models",
+  "checks": [
+    {
+      "provider": "weknora",
+      "status": "passed",
+      "expected_fact": 138,
+      "cited": true
+    },
+    {
+      "provider": "dify",
+      "status": "passed",
+      "expected_fact": 138,
+      "cited": true
+    }
+  ],
+  "original_chars": 427,
+  "retrieval_chars": 40,
+  "finished_at": "2026-10-30T14:36:03.581639+00:00"
+}

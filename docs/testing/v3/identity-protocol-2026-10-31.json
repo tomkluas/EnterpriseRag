@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-31",
+  "scope": "Synthetic RS256 identity protocol validation over real loopback TLS JWKS, actual FastAPI dependency/routes and isolated temporary SQLite",
+  "production_qualified": false,
+  "enterprise_sso_integrated": false,
+  "new_dependencies": [],
+  "production_implementation_changed": false,
+  "confirmed_implementation_defects": [],
+  "fixture": {
+    "accounts": "synthetic tenant/admin/employee only",
+    "keys": "fresh 2048-bit RSA signing keys and independent TLS key generated for this run; never persisted outside temporary directory",
+    "jwks": "Python standard-library ThreadingHTTPServer on random 127.0.0.1 port with fresh temporary certificate trusted explicitly by the real HTTPX AsyncClient",
+    "database": "fresh testing=True SQLite database per test, normal Domain and SQLAlchemy execution",
+    "api": "actual create_app through HTTPX ASGITransport; only API's outbound client construction is patched to inject temporary CA trust; no HTTP/network response mocks",
+    "cleanup": "HTTPX clients closed, DB engine disposed, TLS server shutdown/server_close/thread join, temporary directories removed"
+  },
+  "results": [
+    {
+      "command": "$env:PYTHONPATH='backend'; & backend/.venv-v3/Scripts/python.exe -m unittest discover -s backend/tests/v3 -p test_identity_protocol.py -v",
+      "tests": 9,
+      "duration_seconds": 9.416,
+      "exit_code": 0,
+      "passed": true,
+      "coverage": [
+        "RS256 token -> actual trusted TLS GET /keys -> signature and claims -> DB user lookup -> GET /api/v3/me returns reader despite JWT role=admin",
+        "JWT role=admin cannot authorize POST /api/v3/users: 403 from actual admin route",
+        "old key valid initially; old/new overlap both accepted; old key rejected immediately after removal; new key still accepted",
+        "unknown kid, two distinct RSA signing keys with identical kid and wrong signature: generic 401",
+        "HS256 and none algorithm tokens: generic 401",
+        "expired exp, future nbf, wrong issuer/audience/tenant; null/list/integer tenant; null/integer/list/object sub: generic 401",
+        "missing exp/sub/aud/iss/tenant_id: generic 401",
+        "same valid signed token accepted before DB deactivation and denied with 403 after deactivation; unregistered subject: 404",
+        "actual TLS server returns malformed JSON or HTTP 503: generic 401",
+        "actual TLS server returns 302 to valid same-origin target: generic 401 and target never requested",
+        "actual TLS JWKS delays beyond actual five-second HTTPX read timeout: generic 401, elapsed at least 4.5 seconds"
+      ]
+    },
+    {
+      "command": "$env:PYTHONPATH='backend'; & backend/.venv-v3/Scripts/python.exe -m unittest discover -s backend/tests/v3 -p test_auth.py -v",
+      "tests": 2,
+      "duration_seconds": 0.467,
+      "exit_code": 0,
+      "passed": true
+    },
+    {
+      "command": "$env:PYTHONPATH='backend'; & backend/.venv-v3/Scripts/python.exe -m unittest discover -s backend/tests/v3 -p test_api.py -v",
+      "tests": 6,
+      "duration_seconds": 1.027,
+      "exit_code": 0,
+      "passed": true,
+      "warning": "Existing Starlette TestClient emits HTTPX deprecation warning; no failure."
+    }
+  ],
+  "limitations": [
+    "No real enterprise identity provider, enterprise tenant/user mapping or organization policies have been supplied or validated.",
+    "This is direct JWT/JWKS resource-server validation, not browser login, OIDC discovery, authorization-code/PKCE, logout or IdP revocation integration.",
+    "TLS uses a local test certificate and explicit trust injection; deployment trust store/proxy/network behavior is not validated.",
+    "SQLite is used only with testing=True; production PostgreSQL identity execution is not claimed by this report.",
+    "API requests execute in-process ASGI; outbound JWKS requests use actual TLS sockets. HTTP serving/proxy deployment is outside this report.",
+    "Only scoped authentication/API regressions were run here; this report does not claim a full backend suite run."
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "audit_level": "runtime_integration_partial",
+  "at": "2026-10-30T09:47:01.209341+00:00",
+  "provider": "dify",
+  "commit": "50abea97062110044f15d0e03ccecadd9ccc87ca",
+  "image": "enterpriserag-v3-dify-api:1.18.0-tenant-compat",
+  "image_id": "sha256:77c3b3963969d73eb354fde506e1e162e24cab9f52a785d0985503f8ba311f2a",
+  "patch": "deploy/v3/dify-compat/patch.py",
+  "checks": [
+    {
+      "id": "file-index-a",
+      "status": "passed",
+      "chunks": 1
+    },
+    {
+      "id": "binding-write-readback-a",
+      "status": "passed"
+    },
+    {
+      "id": "file-index-b",
+      "status": "passed",
+      "chunks": 1
+    },
+    {
+      "id": "binding-write-readback-b",
+      "status": "passed"
+    },
+    {
+      "id": "economy-filter-ALLOWED_A",
+      "status": "passed",
+      "hits": 1
+    },
+    {
+      "id": "economy-filter-FORBIDDEN_B",
+      "status": "passed",
+      "hits": 1
+    },
+    {
+      "id": "economy-filter-NO_MATCH",
+      "status": "passed",
+      "hits": 0
+    }
+  ],
+  "indexing_mode": "economy_diagnostic_only",
+  "semantic_filter": "not_run",
+  "real_model_quality": "not_run",
+  "roundtrip_switch": "not_run",
+  "production_g0": "not_complete"
+}

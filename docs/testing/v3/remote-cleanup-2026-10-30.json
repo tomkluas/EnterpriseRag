@@ -1,0 +1,27 @@
+{
+  "run_id": "42491c2701de4b8eaafbb1283a240f9d",
+  "started_at": "2026-10-30T14:25:46.600248+00:00",
+  "scope": "fresh synthetic documents in existing isolated pilot collections",
+  "checks": [
+    {
+      "provider": "weknora",
+      "status": "passed",
+      "cleanup_confirmed": true,
+      "parsed_chunks": 1,
+      "confirmation_basis": "remote_api_not_found",
+      "elapsed_seconds": 6.3049374999973224
+    },
+    {
+      "provider": "dify",
+      "status": "passed",
+      "cleanup_confirmed": true,
+      "parsed_chunks": 1,
+      "confirmation_basis": "remote_api_not_found",
+      "elapsed_seconds": 2.6791077999987465
+    }
+  ],
+  "limitations": [
+    "Remote API absence is not physical erasure of files, vectors or backups."
+  ],
+  "finished_at": "2026-10-30T14:25:55.684120+00:00"
+}

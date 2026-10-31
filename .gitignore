@@ -4,6 +4,10 @@ backend/.env
 /data/
 __pycache__/
 .venv/
+.venv-v3/
+data-v3/
+deploy/v3/.env
+*.local
 node_modules/
 
 # Python
@@ -28,3 +32,6 @@ release/
 
 # 系统文件
 .DS_Store
+
+# Isolated protocol-test source/toolchain cache (no runtime assets)
+/.tmp-real-s3-build/

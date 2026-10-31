@@ -1,0 +1,102 @@
+{
+  "kind": "capacity",
+  "passed": false,
+  "gates": {
+    "duration": false,
+    "concurrency": true,
+    "context": true,
+    "first_token": true,
+    "complete": true,
+    "success_rate": true,
+    "answer_validation": true,
+    "source_unchanged": true
+  },
+  "request_count": 206,
+  "success_count": 206,
+  "success_rate": 1.0,
+  "elapsed_s": 62.15599999999995,
+  "load_s": 60.0,
+  "concurrency": 10,
+  "first_token_p50_s": 2.6089999999999236,
+  "first_token_p95_s": 3.6410000000000764,
+  "complete_p50_s": 2.8899999999998727,
+  "complete_p95_s": 3.938000000000102,
+  "failures": {},
+  "context": {
+    "host": {
+      "machine": "tomkluas",
+      "platform": "Windows-10-10.0.22621-SP0",
+      "logical_cpus": 16,
+      "python": "3.11.15"
+    },
+    "model": {
+      "chat": "qwen3.8-flash",
+      "rerank": "qwen3.7-text-rerank",
+      "chat_endpoint": "maas.qianwenaiapi.com"
+    },
+    "network": "loopback API/PostgreSQL/WeKnora; configured remote cloud model endpoints",
+    "original_size": {
+      "bytes": 118,
+      "sha256": "ecc9a7a3362fd6239ecf78aa9e7e9ee2b3f9c408a1235e47f86e665a6d1d3368"
+    },
+    "document_count": 1,
+    "active_chunks": 1,
+    "load_phase": "steady continuous closed-loop; includes initial cold requests"
+  },
+  "context_fingerprint": "cf05840a6be0bcce5f419e331d8e908faee570a3bbba986f63f360443e29fb58",
+  "missing_context": [],
+  "latency_population": "successful requests; failures separately included in success_rate",
+  "limitations": [
+    "Does not certify production acceptance, stage timings, or queue backlog.",
+    "Only one synthetic authorized document; not representative enterprise workload.",
+    "No Worker started; no backend route changed; cloud model calls were real."
+  ],
+  "config_fingerprint": "15018459ecfd495cc64587bfca51a33316b22d6abfc688557ef99d93d2413fb5",
+  "expectation_hashes": [
+    "848ff75ed88a029d3b4c65d1e4dd8f56788363b0911565cc8afce8512f4d273f"
+  ],
+  "started_at_utc": "2026-10-31T00:18:50.951096+00:00",
+  "finished_at_utc": "2026-10-31T00:19:53.120903+00:00",
+  "scenario": "isolated_single_synthetic_published_document",
+  "test_database": "v3_live_db2b1d81113346c9935bbb74bc19e9aa",
+  "fixture": {
+    "document_id": "6daae553d1a5491cb795b4e4968e8377",
+    "version_id": "c21d8ea591b94bb68a626502346a0bb3",
+    "source_sha256": "ecc9a7a3362fd6239ecf78aa9e7e9ee2b3f9c408a1235e47f86e665a6d1d3368",
+    "active_chunks": 1,
+    "route_revision": 5,
+    "instance_id": "cdbad2403be64b3b9d0ed6d7df013afd",
+    "bytes": 118,
+    "active_backend_provider": "weknora",
+    "active_backend_image": "sha256:25b20959b7456f7842ef55ed4feff3694dbd0c6f8af4117c1fb3c5dec6bdf14d"
+  },
+  "production_acceptance": "not_complete",
+  "large_authorized_scope": "not_tested",
+  "application_source": {
+    "started": {
+      "sha256": "1f08a6d0d7f2602e667e0734167f50fdace1721f8f42896c7ddd0067e1080dd6",
+      "file_count": 29
+    },
+    "finished": {
+      "sha256": "1f08a6d0d7f2602e667e0734167f50fdace1721f8f42896c7ddd0067e1080dd6",
+      "file_count": 29
+    },
+    "unchanged": true,
+    "note": "Uncommitted workspace; Git HEAD does not identify the tested source. Hash covers backend/app/**/*.py only."
+  },
+  "server_error_counts": {
+    "LockNotAvailable": 0,
+    "lock timeout": 0,
+    "different Context": 0,
+    "Exception in ASGI application": 0
+  },
+  "retrieval_error_diagnostics": [],
+  "chat_error_diagnostics": [],
+  "cleanup": {
+    "original_grants_restored": true,
+    "temporary_reader_disabled": true,
+    "own_server_stopped": true,
+    "private_directory_removed": true,
+    "errors": []
+  }
+}

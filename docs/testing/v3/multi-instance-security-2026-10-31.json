@@ -1,0 +1,16 @@
+{
+  "checked_at": "2026-10-31T13:27:33.243196+00:00",
+  "run": 4,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "passed": true,
+  "scope": "two in-process API/Domain/Database instances; real isolated PostgreSQL; model and knowledge HTTP boundaries are synthetic",
+  "checks": [
+    "revocation before first body",
+    "revocation after first body",
+    "history rewrite revocation blocks later dispatch",
+    "history answer and evidence hidden",
+    "45 authorized bindings across 3 collections in 5 complete batches"
+  ]
+}

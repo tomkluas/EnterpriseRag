@@ -1,0 +1,77 @@
+{
+  "checks": [
+    {
+      "provider": "weknora",
+      "extension": ".docx",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18080",
+      "collection_id": "d3c82d99-64ca-48b6-89e1-76fc1a9d9876",
+      "image_digest": "sha256:25b20959b7456f7842ef55ed4feff3694dbd0c6f8af4117c1fb3c5dec6bdf14d",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    },
+    {
+      "provider": "weknora",
+      "extension": ".xlsx",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18080",
+      "collection_id": "d3c82d99-64ca-48b6-89e1-76fc1a9d9876",
+      "image_digest": "sha256:25b20959b7456f7842ef55ed4feff3694dbd0c6f8af4117c1fb3c5dec6bdf14d",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    },
+    {
+      "provider": "weknora",
+      "extension": ".pdf",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18080",
+      "collection_id": "d3c82d99-64ca-48b6-89e1-76fc1a9d9876",
+      "image_digest": "sha256:25b20959b7456f7842ef55ed4feff3694dbd0c6f8af4117c1fb3c5dec6bdf14d",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    },
+    {
+      "provider": "dify",
+      "extension": ".docx",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18082",
+      "collection_id": "eb722a30-d5ff-4d05-bb4f-15fd8f869a0d",
+      "image_digest": "sha256:5a372d832406893b0508982f1011cd1c18ca379d74730dce004391ac70d186d1",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    },
+    {
+      "provider": "dify",
+      "extension": ".xlsx",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18082",
+      "collection_id": "eb722a30-d5ff-4d05-bb4f-15fd8f869a0d",
+      "image_digest": "sha256:5a372d832406893b0508982f1011cd1c18ca379d74730dce004391ac70d186d1",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    },
+    {
+      "provider": "dify",
+      "extension": ".pdf",
+      "status": "passed",
+      "chunks": 1,
+      "fact_preserved": true,
+      "endpoint": "http://127.0.0.1:18082",
+      "collection_id": "eb722a30-d5ff-4d05-bb4f-15fd8f869a0d",
+      "image_digest": "sha256:5a372d832406893b0508982f1011cd1c18ca379d74730dce004391ac70d186d1",
+      "embedding_model": "qwen3.7-text-embedding-flash"
+    }
+  ],
+  "scope": "synthetic minimal files only",
+  "not_verified": [
+    "scanned PDF OCR",
+    "cross-page tables",
+    "complex office layouts",
+    "production format qualification"
+  ]
+}
