@@ -1,3 +1,4 @@
+# 验证 S3 恢复的条件写入、读回核验与失败隔离；Stubber 严格约束请求顺序，不连接真实 S3。
 """Protocol-level recovery tests: all storage calls are botocore stubs."""
 import hashlib
 import io
@@ -45,6 +46,7 @@ class S3RecoveryTests(unittest.TestCase):
         ENGINES.clear()
         self.temp.cleanup()
 
+    # 逐条预设目标前缀为空的响应；分页场景必须读完全部页，不能把首页为空误判为整个恢复空间为空。
     def empty(self, pages=False):
         self.stub.add_response('get_bucket_versioning', {}, {'Bucket': 'restore-bucket'})
         params = {'Bucket': 'restore-bucket', 'Prefix': 'recovery/run1/'}
@@ -60,6 +62,7 @@ class S3RecoveryTests(unittest.TestCase):
         self.stub.add_response('get_object', {'Body': StreamingBody(io.BytesIO(read), len(read))}, {
             'Bucket': 'restore-bucket', 'Key': 'recovery/run1/t/file'})
 
+    # 读取恢复隔离记录，确认失败后仍保留足够证据定位本轮写入对象，而不是随意删除未知远端内容。
     def journal(self):
         return json.loads(next(self.root.glob('recovery-attempt-*/manifest.json')).read_text(encoding='utf-8'))
 

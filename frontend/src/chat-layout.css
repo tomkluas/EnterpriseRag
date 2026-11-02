@@ -1,0 +1,28 @@
+/* 输入区作为普通布局行保留高度，正文仅在上方消息区滚动。 */
+.message-actions{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:8px}
+.conversation-row{display:flex;align-items:center;border-radius:5px;margin:2px 0;min-width:0}
+.conversation-row.chosen{background:#f2f7f8}
+.conversation-list .conversation-row .conversation-open{flex:1;min-width:0;margin:0;color:#46646d}
+.conversation-list .conversation-row .conversation-delete{width:28px;flex-shrink:0;padding:6px 4px;margin:0;font-size:18px;color:#819198;text-align:center}
+.conversation-list .conversation-row .conversation-delete:hover{background:#fbe9e6;color:#a3473e}
+.chat-workspace{height:100vh;height:100dvh;min-height:0;overflow:hidden}
+.chat-workspace .main-pane{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.chat-workspace header,.chat-workspace .banner{flex-shrink:0}
+.chat-workspace .banner{max-height:18vh;overflow:auto}
+.chat-workspace .chat-page{flex:1;min-height:0;width:100%;overflow:hidden;padding-bottom:max(12px,env(safe-area-inset-bottom));}
+.chat-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable;overflow-anchor:none}
+.chat-scroll .messages{padding:24px 8px 12px}
+.chat-scroll .message:last-child{margin-bottom:0}
+.chat-scroll .chat-empty{min-height:100%;padding:24px 8px;margin:0}
+.chat-scroll .answer-content,.chat-scroll .question{overflow-wrap:anywhere;min-width:0}
+.chat-scroll .answer-content table{display:block;max-width:100%;overflow-x:auto}
+.chat-scroll-controls{height:32px;flex-shrink:0;display:flex;justify-content:center;align-items:center}
+.chat-workspace .composer{flex-shrink:0;margin-top:0}
+.chat-workspace .composer textarea{display:block;max-height:25dvh;min-height:48px;overflow-y:auto}
+.chat-workspace .chat-footnote{flex-shrink:0;margin:8px 0 0}
+@media(max-width:650px){
+  .chat-workspace .chat-page{min-height:0}
+  .chat-scroll .chat-empty{min-height:100%}
+  .chat-workspace .banner{font-size:11px;margin-top:8px;padding:7px 10px}
+  .chat-workspace .composer{padding:10px 12px}
+}

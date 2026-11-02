@@ -1,3 +1,4 @@
+# 验证 worker 的持久任务状态机、租约及撤回竞态；临时 SQLite 保存真实状态，FakeKnowledgeService 替代远端平台。
 import tempfile
 import unittest
 import asyncio
@@ -24,6 +25,22 @@ class FakeKnowledgeService:
 
 
 class WorkerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_processing_poll_saves_real_count_and_check_time_for_task_details(self):
+        received=self.domain.receive('t','admin',self.space,'progress.txt',b'policy')
+        class Service(FakeKnowledgeService):
+            async def status(inner,binding):return BackendStatus('processing',2,'indexing')
+        self.worker.factory=lambda *args:Service()
+        await self.worker.run_once()
+        job=self.domain.list_jobs('t','admin')[0]
+        self.assertEqual(job['id'],received['job_id'])
+        self.assertEqual(job['state'],'queued')
+        result=job['index_results'][0]
+        self.assertEqual(result['chunks'],2)
+        self.assertEqual(result['raw_state'],'indexing')
+        self.assertGreater(result['observed_at'],0)
+        self.assertFalse(result['can_preview'])
+
+    # 只缩短心跳等待并令租约过期，保留实际续租逻辑；迟到回执不能被接受，后续任务仍应继续执行。
     async def test_expired_heartbeat_does_not_stop_next_job_or_accept_late_receipt(self):
         first=self.domain.receive('t','admin',self.space,'first.txt',b'first')
         second=self.domain.receive('t','admin',self.space,'second.txt',b'second')
@@ -57,6 +74,7 @@ class WorkerTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(s.get(Job,received['job_id']).state,'failed')
             self.assertEqual(s.get(Version,received['version_id']).state,'failed')
 
+    # 使用真实领域任务和临时持久库，只替换后端工厂；断言因此能够检查任务、版本与副本的联动状态。
     async def asyncSetUp(self):
         self.temp=tempfile.TemporaryDirectory(); self.db=Database('sqlite:///'+str(Path(self.temp.name)/'test.db'),testing=True)
         self.db.migrate(); self.domain=Domain(self.db,Path(self.temp.name)/'objects'); self.domain.bootstrap('t','admin')

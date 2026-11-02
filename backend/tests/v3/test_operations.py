@@ -1,3 +1,4 @@
+# 验证运维接口的管理员边界、队列统计和错误脱敏；复用临时 API 夹具，不探测实际生产依赖。
 import unittest
 import time
 from unittest.mock import patch
@@ -26,6 +27,7 @@ class OperationsTests(unittest.TestCase):
         self.assertIn('unconfirmed_remote_deletions',result['alerts'])
         self.assertNotIn('secret body',response.text)
         self.assertNotIn('private-remote',response.text)
+        self.domain.add_user('enterprise','admin','backup-admin',role='admin')
         self.domain.add_user('enterprise','admin','admin',role='reader')
         self.assertEqual(self.client.get('/api/v3/operations',headers=self.headers).status_code,403)
 

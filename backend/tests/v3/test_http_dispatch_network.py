@@ -1,3 +1,4 @@
+# 验证真实回环网络中的发送门禁与锁释放；部分用例需显式隔离 PostgreSQL，其他用例以模拟传输覆盖取消和失败。
 """Loopback HTTP tests: receiving a request must not retain tenant locks until headers."""
 import asyncio
 import json
@@ -23,6 +24,7 @@ class DispatchNetworkTests(unittest.IsolatedAsyncioTestCase):
     async def test_stream_delayed_headers_allow_tenant_write(self):await self._exercise('stream')
     async def test_retrieve_delayed_headers_allow_tenant_write(self):await self._exercise('retrieve')
 
+    # 回环服务收到请求后暂停响应头，再尝试租户写入；写入及时完成才说明发送门禁没有占锁等待远端响应。
     async def _exercise(self,kind):
         db=Database(os.environ['V3_TEST_DATABASE_URL']);db.migrate()
         tenant='dispatch-network-'+uuid.uuid4().hex

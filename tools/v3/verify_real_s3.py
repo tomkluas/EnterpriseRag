@@ -1,3 +1,4 @@
+# 使用指定 MinIO 二进制启动临时回环服务，验证恢复和条件删除；可选 PostgreSQL 仅用合成试点中新 schema，结束清理自建资源。
 """Isolated real S3 protocol probe. No business configuration or credentials are read."""
 import argparse
 import hashlib
@@ -27,12 +28,14 @@ from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
 
+# 由系统分配临时回环端口用于本轮服务；这里只挑选端口，实际能否成功启动仍由后续健康检查确认。
 def port():
     with socket.socket() as sock:
         sock.bind(('127.0.0.1', 0))
         return sock.getsockname()[1]
 
 
+# 使用独立数据目录、随机凭据和随机桶执行真实协议验证；退出清理汇总失败，不能把清理异常吞掉后报告通过。
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--minio', type=Path, required=True)
@@ -58,6 +61,7 @@ def main():
     env_keys = ('V3_SECRET_S3_ACCESS', 'V3_SECRET_S3_SECRET', 'V3_S3_ENDPOINT', 'V3_S3_REGION')
     previous = {key: os.environ.get(key) for key in env_keys}
 
+    # 默认使用临时 SQLite；可选 PostgreSQL 每个恢复目标独占随机 schema，避免对象和记录跨案例串用。
     def database(name):
         if postgres_url is None:
             db = Database('sqlite:///' + str(root / (name + '.db')), testing=True)
@@ -78,6 +82,7 @@ def main():
     def passed(name, **details):
         checked(name, True, **details)
 
+    # 仅将明确 404 视为对象不存在；权限、网络或服务异常继续抛出，不能被当作成功删除。
     def read_or_missing(objects, object_key):
         try:
             return objects.read(object_key)
@@ -86,6 +91,7 @@ def main():
                 return None
             raise
 
+    # 执行预期失败操作并核对异常类型及可选原因；未抛异常即判失败，避免拒绝路径漏测。
     def rejected(action, exception, text=None):
         try:
             action()
@@ -259,6 +265,7 @@ def main():
     finally:
         cleanup_errors = []
 
+        # 逐项尝试清理并记录失败，使一个资源释放异常不会阻止其余自建资源回收。
         def cleanup_step(label, action):
             try:
                 action()
@@ -280,6 +287,7 @@ def main():
         if postgres_base is not None:
             report['postgres_schemas_dropped'] = 0
 
+            # 删除前再次校验本轮随机 schema 名；只回收演练创建的命名空间，不扩大清理范围。
             def drop_schema(schema):
                 if not re.fullmatch('real_s3_[0-9a-f]{32}', schema):
                     raise ValueError('Refusing to drop an unexpected schema')

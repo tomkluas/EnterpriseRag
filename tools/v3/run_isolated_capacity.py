@@ -1,3 +1,4 @@
+# 依赖既有合成试点库、回环服务及真实模型的容量演练；只在独立命名的测试资源中写入，结束需核对恢复与清理结果。
 """Explicitly opted-in, reversible capacity exercise against the existing synthetic live-pilot DB."""
 import argparse
 import asyncio
@@ -32,6 +33,7 @@ from app.v3.recovery import _private_directory
 import acceptance
 
 
+# 只包装本轮临时 API 的异常观测，记录类型和应用栈位置；正文和凭据不能进入诊断日志。
 def create_diagnostic_app():
     # Only this disposable API instance gets exception-type diagnostics. Never
     # log exception text, questions, answer tokens, request URLs or credentials.
@@ -66,6 +68,7 @@ def create_diagnostic_app():
     return app
 
 
+# 严格核对源端点和合成测试库命名，再改写数据库名，避免压测误连日常业务库。
 def isolated_url(source, test_name):
     url = make_url(source)
     if (url.host, url.port, url.database) != ('127.0.0.1', 18433, 'enterpriserag_v3'):
@@ -75,6 +78,7 @@ def isolated_url(source, test_name):
     return url.set(database=test_name).render_as_string(hide_password=False)
 
 
+# 从已知合成文件名重建预期内容，用哈希核对资料身份，拒绝拿未知原件参与在线演练。
 def expected_original(name):
     match = re.fullmatch(r'allowed-([0-9a-f]{32})\.txt', name)
     if not match:
@@ -84,12 +88,14 @@ def expected_original(name):
     return 'updated-'+run+'.md', body
 
 
+# 记录应用源文件摘要，便于把测量结果对应到本次代码版本，避免不同实现的结果混用。
 def application_fingerprint():
     entries={str(p.relative_to(ROOT)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest()
              for p in sorted((ROOT/'backend/app').rglob('*.py'))}
     return {'sha256':acceptance.fingerprint(entries),'file_count':len(entries)}
 
 
+# 演练会临时调整合成资料授权并启动专用 API；退出时先停止在途请求，再恢复授权，清理失败必须反映在报告中。
 async def exercise(args):
     stop_file = args.output.with_suffix('.stop')
     if stop_file.exists():
@@ -271,6 +277,7 @@ async def exercise(args):
     print(json.dumps(dict(event='finished',passed=report['passed'],requests=report['request_count'],elapsed_s=report['elapsed_s'],output=str(args.output))),flush=True)
 
 
+# 仅验证隔离守卫的接受与拒绝条件，不加载本地配置、不连接服务，也不发送压测请求。
 def self_test():
     # Pure guards only: never read local configuration or connect to services.
     source='postgresql://u:p@127.0.0.1:18433/enterpriserag_v3'

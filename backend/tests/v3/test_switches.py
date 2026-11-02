@@ -1,3 +1,4 @@
+# 复用临时领域夹具验证后端切换和草稿取消；人工构造就绪副本，关注清单与修订号的一致性，不执行真实复制。
 from test_domain import DomainFixture
 from app.v3.domain import DomainError, uid
 from app.v3.models import BackendInstance, Replica, Space, Tenant, User, Job, Version

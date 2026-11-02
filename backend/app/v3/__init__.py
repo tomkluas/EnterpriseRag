@@ -1,1 +1,4 @@
-"""EnterpriseRag V3. No dependency on legacy application state."""
+# V3 业务包：以自有数据库统一管理身份、资料原件、角色授权、版本和后台任务。
+# 知识服务适配器仅负责远端解析和检索，不作为本地业务权限的唯一依据。
+
+"""EnterpriseRag V3，不依赖旧版应用状态。"""

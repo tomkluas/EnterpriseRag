@@ -1,3 +1,4 @@
+# 依赖既有本地合成试点，上传后删除本轮新文件；远端 API 确认不存在只证明接口不可见，不能证明文件、向量或备份物理擦除。
 """Exercise upload/delete with fresh synthetic files in the recorded isolated pilot.
 
 Never uses existing remote documents or writes V3 business records.
@@ -20,6 +21,7 @@ from app.v3.knowledge.registry import BackendRegistry
 from app.v3.knowledge.contracts import Binding,BackendError
 
 
+# 先证明文件存在并解析完成，再接受删除并轮询消失；仅收到删除回执不足以说明清理完成。
 async def verify(env_file,output):
     cfg=dotenv_values(env_file)
     for key,value in cfg.items():

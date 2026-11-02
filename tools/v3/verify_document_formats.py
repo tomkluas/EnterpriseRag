@@ -1,3 +1,4 @@
+# 向本地双后端上传最小 Office/PDF 合成样本并检索指定事实；依赖 Docker 镜像检查与平台 API，不覆盖扫描件或复杂排版。
 """Synthetic DOCX/XLSX/text-PDF parser probes; no office libraries or business files."""
 import argparse,asyncio,io,json,os,uuid,zipfile,subprocess
 from pathlib import Path
@@ -8,6 +9,7 @@ from app.v3.knowledge.contracts import Binding,Scope
 from types import SimpleNamespace
 
 
+# 在内存中打包最小 Office 容器，避免引入办公软件依赖或现有业务文件。
 def package(files):
     output=io.BytesIO()
     with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as archive:
@@ -15,6 +17,7 @@ def package(files):
     return output.getvalue()
 
 
+# 为不同格式放入同一个合成事实，便于检验解析后是否仍可召回；最小样本不证明复杂格式兼容。
 def fixtures(marker):
     text=f'SYNTHETIC {marker}. Travel allowance policy is 317 yuan per day.'
     rel='<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="{target}"/></Relationships>'
@@ -33,6 +36,7 @@ def fixtures(marker):
     return {'.docx':doc,'.xlsx':sheet,'.pdf':pdf}
 
 
+# 等待解析完成且有实际分块后检索 317 这一事实，并绑定端点、集合、镜像和模型，避免证明被误用到别的环境。
 async def main(args):
     config=dotenv_values(args.env_file)
     for key,value in config.items():

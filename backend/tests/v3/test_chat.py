@@ -1,3 +1,4 @@
+# 验证问答各阶段的权限复核、路由变化和流关闭；原件与数据库隔离，模型和检索结果由测试替代。
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +10,42 @@ from app.v3.knowledge.contracts import Evidence
 
 
 class ChatDependencyTests(unittest.IsolatedAsyncioTestCase):
+    async def test_success_trace_is_committed_before_done_event_reaches_client(self):
+        chat=ChatService(self.domain,None,self.models())
+        async def retrieve(*args,**kwargs):return self.domain.scope('t','admin',self.space),[self.evidence]
+        chat.retrieve=retrieve
+        source=chat.answer('t','admin',self.conv,self.space,'timed success').__aiter__()
+        try:
+            async for event in source:
+                if event['event']=='done':
+                    with self.db.transaction('t') as s:
+                        message=s.get(Message,event['data']['message_id'])
+                        self.assertEqual(message.state,'completed')
+                        self.assertIsNone(message.trace.get('failure'))
+                        stages={step['stage']:step for step in message.trace.get('stages',[])}
+                        self.assertTrue({'retrieve','rerank','generate','request'}<=stages.keys())
+                        self.assertEqual(stages['request']['outcome'],'ok')
+                        self.assertGreaterEqual(stages['request']['milliseconds'],0)
+                    break
+            else:self.fail('Missing completion event')
+        finally:await source.aclose()
+
+    async def test_completed_trace_stays_successful_when_reader_closes_after_done(self):
+        chat=ChatService(self.domain,None,self.models())
+        async def retrieve(*args,**kwargs): return self.domain.scope('t','admin',self.space),[self.evidence]
+        chat.retrieve=retrieve
+        source=chat.answer('t','admin',self.conv,self.space,'continue').__aiter__()
+        async for event in source:
+            if event['event']=='done':
+                message_id=event['data']['message_id']
+                break
+        await source.aclose()
+        with self.db.transaction('t') as s:
+            message=s.get(Message,message_id)
+            self.assertEqual(message.state,'completed')
+            self.assertIsNone(message.trace['failure'])
+            self.assertEqual(next(step['outcome'] for step in message.trace['stages'] if step['stage']=='request'),'ok')
+
     async def asyncSetUp(self):
         self.temp=tempfile.TemporaryDirectory();self.db=Database('sqlite:///'+str(Path(self.temp.name)/'test.db'),testing=True)
         self.db.migrate();self.domain=Domain(self.db,Path(self.temp.name)/'objects');self.domain.bootstrap('t','admin')
@@ -81,6 +118,7 @@ class ChatDependencyTests(unittest.IsolatedAsyncioTestCase):
         with self.db.transaction('t') as s:
             self.assertEqual(s.get(Message,events[-1]['data']['message_id']).state,'completed')
 
+    # 复现 API 在不同任务中读取和关闭流的方式；关闭后必须释放共享范围，否则撤权或指标写入会被阻塞。
     async def test_api_cross_task_aclose_releases_shared_scope_and_records_cancellation(self):
         import asyncio
         from contextlib import asynccontextmanager
@@ -183,6 +221,7 @@ class ChatDependencyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(retrievals),2)
         self.assertEqual(models.calls,2)
 
+    # 已输出首段答案后切换路由必须终止旧流；继续拼接新后端证据会形成无法追溯的混合答案。
     async def test_route_change_after_token_does_not_mix_new_evidence(self):
         from app.v3.models import Space
         chat=ChatService(self.domain,None,self.models());retrievals=[]

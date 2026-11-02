@@ -1,3 +1,4 @@
+# 依赖本地双后端和真实模型，创建合成测试库并登记本地试点；运行会上传合成资料和更新试点状态，禁止用于生产。
 """Run real-model, dual-backend text acceptance before enabling a local-only pilot.
 
 Never for production: full G0 remains separate. All prototype DB writes use a new
@@ -21,6 +22,7 @@ from app.v3.chat.service import ChatService
 from app.v3.qualification import matching_format_checks
 
 
+# 先限制开发环境和本地部署，再在新库跑真实模型与双后端链路；资格写回需依赖后续实际检查结果。
 async def main(args):
     config=dotenv_values(args.env_file)
     for key,value in config.items():

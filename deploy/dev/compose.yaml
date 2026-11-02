@@ -1,0 +1,141 @@
+name: enterpriserag-v3-development
+x-app: &app
+  image: ${V3_IMAGE:-enterpriserag-v3:dev}
+  env_file: ${V3_COMPOSE_ENV_FILE:-.env}
+  volumes:
+    - originals:/data/objects
+    - ${V3_COMPOSE_ENV_FILE:-.env}:/run/v3.env:ro
+services:
+  configure:
+    image: ${V3_IMAGE:-enterpriserag-v3:dev}
+    profiles: [setup]
+    environment:
+      V3_SETUP_CONFIG: ${V3_SETUP_CONFIG:-/setup/.env}
+    volumes:
+      - ${V3_SETUP_DIRECTORY:-.}:/setup
+      - ../../tools/v3/configure_weknora.py:/opt/configure_weknora.py:ro
+    command: ["python", "/opt/configure_weknora.py"]
+  api:
+    <<: *app
+    build:
+      context: ../..
+      dockerfile: deploy/v3/Dockerfile
+    ports: ["127.0.0.1:19000:18000"]
+    depends_on:
+      database: {condition: service_healthy}
+      objects-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18000/health/ready', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+  worker:
+    <<: *app
+    command: ["python", "-m", "app.v3.cli", "--env-file", "/run/v3.env", "worker"]
+    depends_on:
+      database: {condition: service_healthy}
+      objects-init: {condition: service_completed_successfully}
+    restart: unless-stopped
+  migrate:
+    <<: *app
+    profiles: [migration]
+    command: ["python", "-m", "app.v3.cli", "--env-file", "/run/v3.env", "migrate"]
+    depends_on:
+      database: {condition: service_healthy}
+      objects-init: {condition: service_completed_successfully}
+  objects-init:
+    image: busybox:1.36
+    command: ["sh", "-c", "chown 10001:10001 /data/objects"]
+    volumes: ["originals:/data/objects"]
+    restart: "no"
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: enterpriserag_v3
+      POSTGRES_USER: v3
+      POSTGRES_PASSWORD: ${V3_POSTGRES_PASSWORD:?Run Init first}
+    volumes: ["database:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U v3 -d enterpriserag_v3"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  wk-database:
+    image: paradedb/paradedb:v0.25.11-pg17
+    environment:
+      POSTGRES_DB: weknora
+      POSTGRES_USER: weknora
+      POSTGRES_PASSWORD: ${WK_DATABASE_PASSWORD:?Run Init first}
+    volumes: ["wk-database:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weknora -d weknora"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  wk-redis:
+    image: redis:7.0-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["wk-redis:/data"]
+  docreader:
+    image: wechatopenai/weknora-docreader:v0.9.0
+    volumes: ["docreader-tmp:/tmp/docreader"]
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:50051"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+  weknora:
+    image: wechatopenai/weknora-app:v0.9.0
+    environment:
+      GIN_MODE: release
+      DB_DRIVER: postgres
+      DB_HOST: wk-database
+      DB_PORT: "5432"
+      DB_USER: weknora
+      DB_PASSWORD: ${WK_DATABASE_PASSWORD}
+      DB_NAME: weknora
+      REDIS_ADDR: wk-redis:6379
+      REDIS_PASSWORD: ""
+      RETRIEVE_DRIVER: postgres
+      DOCREADER_ADDR: docreader:50051
+      DOCREADER_TRANSPORT: grpc
+      STORAGE_TYPE: local
+      LOCAL_STORAGE_BASE_DIR: /data/files
+      JWT_SECRET: ${WK_JWT_SECRET}
+      SYSTEM_AES_KEY: ${WK_AES_KEY}
+      SYSTEM_SIGNING_KEY: ${WK_SIGNING_KEY}
+      AUTO_MIGRATE: "true"
+      OLLAMA_OPTIONAL: "true"
+      WEKNORA_SANDBOX_DOCKER_ENABLED: "false"
+      SSRF_WHITELIST_EXTRA: ${WK_MODEL_HOST_ALLOWLIST:-}
+    volumes:
+      - wk-files:/data/files
+      - docreader-tmp:/tmp/docreader:ro
+      - ./weknora-config.yaml:/app/config/config.yaml:ro
+    ports: ["127.0.0.1:19080:8080"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on:
+      wk-database: {condition: service_healthy}
+      docreader: {condition: service_healthy}
+      wk-redis: {condition: service_started}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  weknora-web:
+    image: wechatopenai/weknora-ui:v0.9.0
+    environment: {APP_HOST: weknora, APP_PORT: "8080"}
+    ports: ["127.0.0.1:19081:80"]
+    depends_on:
+      weknora: {condition: service_healthy}
+volumes:
+  originals:
+  database:
+  wk-database:
+  wk-redis:
+  wk-files:
+  docreader-tmp:

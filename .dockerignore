@@ -13,4 +13,5 @@ models
 .env
 **/.env
 **/*.local
+**/.weknora-setup.*
 .tmp-real-s3-build

@@ -1,3 +1,4 @@
+# 验证租户备份恢复、损坏包拒绝及事务回滚；原件和数据库均为临时夹具，恢复目标与源库隔离。
 import hashlib
 import json
 
@@ -14,6 +15,7 @@ from app.v3.recovery import backup_tenant, restore_tenant
 
 ENGINES = []
 
+# 集中登记测试数据库连接，便于在异常路径也统一释放引擎，避免临时文件仍被连接占用。
 def make_database(*args, **kwargs):
     db = Database(*args, **kwargs)
     ENGINES.append(db.engine)
@@ -89,6 +91,7 @@ def test_path_traversal_rejected(tmp_path):
         restore_tenant(target, 't', bundle, tmp_path / 'restored')
 
 
+# 在数据库插入阶段制造冲突，验证已恢复对象与租户记录一起回滚，不能留下半完成恢复。
 def test_insert_conflict_rolls_back_objects_and_tenant(tmp_path):
     source, store = setup_source(tmp_path)
     bundle = tmp_path / 'bundle'

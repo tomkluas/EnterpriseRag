@@ -1,3 +1,4 @@
+# 验证启动前配置检查及敏感信息不外泄；使用构造配置和环境替身，不通过真实数据库连接判断配置正确性。
 import dataclasses
 import importlib
 import json

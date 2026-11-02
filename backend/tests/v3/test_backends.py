@@ -1,3 +1,4 @@
+# 验证两种知识后端的协议及文档范围约束；全部 HTTP 响应由 MockTransport 提供，不验证真实平台可用性。
 import unittest
 import json
 import httpx

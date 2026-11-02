@@ -1,3 +1,4 @@
+# 验证恢复命令和配置预检的接线；替换环境加载和数据库工厂，备份及恢复仅使用临时目录。
 import contextlib
 import io
 import tempfile

@@ -1,3 +1,4 @@
+# 面向本地兼容镜像的协议诊断，会向隔离数据集上传合成文件；economy 检索结果不能证明语义检索或生产 G0 通过。
 """Diagnose the explicitly patched Dify image; economy recall is not V3 semantic G0."""
 import argparse
 import asyncio
@@ -9,6 +10,7 @@ from app.v3.knowledge.dify import DifyBackend
 from app.v3.knowledge.contracts import Binding
 
 
+# 先等待两个合成文档形成实际分块，再用正样本和无匹配条件验证过滤，防止空索引造成看似无泄漏。
 async def main(args):
     path=Path(args.runtime_dir)/'dify-test-auth.json';auth=json.loads(path.read_text(encoding='utf-8-sig'))
     collection=auth['dataset']['id'];checks=[];bindings=[]

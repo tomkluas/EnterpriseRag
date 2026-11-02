@@ -1,3 +1,4 @@
+# 验证删除回执与远端消失确认分离，以及清理任务重试；适配器响应和 worker 后端均为模拟。
 import unittest
 import httpx
 import test_worker as fixtures
@@ -26,6 +27,7 @@ class CleanupWorkerTests(unittest.IsolatedAsyncioTestCase):
     asyncSetUp=fixtures.WorkerTests.asyncSetUp
     asyncTearDown=fixtures.WorkerTests.asyncTearDown
 
+    # 先获得真实领域状态中的副本再撤回；把业务不可见与后端物理清理拆开，便于检验清理任务是否正确推进。
     async def withdrawn(self):
         received=self.domain.receive('t','admin',self.space,'policy.txt',b'policy')
         await self.worker.run_once()

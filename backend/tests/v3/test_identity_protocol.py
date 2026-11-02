@@ -1,3 +1,4 @@
+# 验证身份协议边界和密钥轮换；使用临时证书与回环 HTTPS 服务执行真实 TLS/JWKS 请求，不接触企业身份源。
 """Synthetic OIDC boundary checks: real TLS/JWKS/RSA and actual API/database.
 
 No external IdP, enterprise credentials, network mocks, or production data.
@@ -29,6 +30,7 @@ from app.v3.domain import Domain
 
 class IdentityProtocolTests(unittest.IsolatedAsyncioTestCase):
     @classmethod
+    # 临时自签证书和两把签名密钥支持真实 TLS/JWKS 与轮换场景；服务只绑定回环地址，不借用企业身份源。
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory(prefix='v3-synthetic-identity-')
         cls.root = Path(cls.temp.name)
@@ -138,6 +140,7 @@ class IdentityProtocolTests(unittest.IsolatedAsyncioTestCase):
         return await self.api.request('POST' if kwargs else 'GET', path,
             headers={'Authorization':'Bearer '+(token or self.token())}, **kwargs)
 
+    # 统一核对拒绝码和安全错误文本，并检查令牌不出现在响应中，避免只拒绝请求却泄露凭据。
     async def assert_rejected(self, token=None):
         response = await self.request(token)
         self.assertEqual(response.status_code, 401, response.text)

@@ -1,3 +1,4 @@
+# 验证孤儿原件的计划、复核和条件删除；本地对象在临时目录，S3 请求用 Stubber 预设，不连接真实桶。
 import hashlib
 import os
 import time
@@ -43,6 +44,7 @@ class OrphanGcTests(unittest.TestCase):
         self.assertEqual(self.domain.read_original('t','admin',current['document_id']),b'current')
         with self.db.transaction('t') as s:self.assertEqual(s.query(Audit).filter_by(action='original.orphan_delete').count(),1)
 
+    # 计划生成后新增引用，即使修订号未变也必须重新核对引用；防止把仅凭旧清单的删除当成安全删除。
     def test_new_reference_even_without_revision_change_blocks_deletion(self):
         plan=self.plan()
         with self.db.transaction('t') as s:
@@ -143,6 +145,7 @@ class OrphanGcTests(unittest.TestCase):
                     self.assertEqual(result['failed'],1 if conflict else 0)
                     stub.assert_no_pending_responses()
 
+    # 模拟服务忽略条件删除的反例；能力探针失败必须先拒绝，不能冒险删除真正候选对象。
     def test_s3_apply_refuses_service_ignoring_ifmatch_before_candidate_delete(self):
         import io
         from datetime import datetime,timezone

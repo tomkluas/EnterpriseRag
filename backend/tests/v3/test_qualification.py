@@ -1,3 +1,4 @@
+# 验证格式能力证明必须绑定具体环境；只比较构造的资格数据，不执行平台探测或认可生产能力。
 import unittest
 from app.v3.qualification import matching_format_checks
 

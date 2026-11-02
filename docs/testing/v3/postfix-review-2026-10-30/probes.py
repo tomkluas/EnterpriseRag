@@ -1,3 +1,4 @@
+# 修复后的独立回归：继承临时 worker 夹具核验租约回收与 API 恢复链；不访问运行中的数据库或平台。
 """Independent post-fix checks. Unique temporary databases; no runtime writes."""
 import asyncio,time,unittest
 from unittest.mock import patch
@@ -11,6 +12,7 @@ from test_worker import WorkerTests,FakeKnowledgeService
 
 
 class Checks(WorkerTests):
+    # 故意让首个上传租约自然失效而不手工修任务；未知结果应冻结，下一任务仍能完成且不重复上传。
     async def test_natural_reclaim_reaches_next_job_without_manually_changing_failed_job(self):
         first=self.domain.receive('t','admin',self.space,'first.txt',b'first')
         next_job=self.domain.receive('t','admin',self.space,'next.txt',b'next')

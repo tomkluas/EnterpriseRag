@@ -1,3 +1,4 @@
+# 验证模型请求的权限门禁、响应解析及错误处理；MockTransport 替代生成和重排接口，不测模型质量。
 import unittest
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
@@ -31,6 +32,7 @@ class ModelDispatchTests(unittest.IsolatedAsyncioTestCase):
             async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
                 await ModelService(settings,client).rank('q',[SimpleNamespace(content='a')])
 
+    # 模拟正文读取时检查锁状态：发送瞬间必须保护授权快照，等待正文期间必须允许撤权提交。
     async def test_dispatch_gate_is_released_before_model_body_is_consumed(self):
         held=False
         @asynccontextmanager

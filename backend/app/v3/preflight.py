@@ -1,4 +1,6 @@
-"""Offline production configuration checks. No connectivity or acceptance claims."""
+# 离线配置预检：只检查生产配置形状和本地密钥引用，输出固定字段名与布尔结果。
+# 预检通过不代表网络可达、部署隔离有效或底座已经通过业务验收。
+"""离线检查生产配置，不代表连接可达或业务验收通过。"""
 import os
 import re
 from urllib.parse import urlsplit
@@ -11,6 +13,7 @@ def _text(value):
     return isinstance(value, str) and bool(value.strip()) and value == value.strip()
 
 
+# 拒绝空白、通配主机、内嵌账号和片段，仅在调用方允许时接受查询串。
 def _url(value, schemes, query=False):
     if not _text(value) or any(char.isspace() or ord(char) < 32 for char in value):
         return False
@@ -23,6 +26,7 @@ def _url(value, schemes, query=False):
         return False
 
 
+# 只解析支持的 PostgreSQL 连接串，不建立连接，也不返回可能含凭据的异常。
 def _postgres(value):
     if not _text(value):
         return False
@@ -30,10 +34,11 @@ def _postgres(value):
         parsed = make_url(value)
         return bool(parsed.drivername in ('postgresql', 'postgresql+psycopg2') and parsed.database)
     except (ValueError, TypeError, ArgumentError):
-        # Parser diagnostics may contain the input connection string. Never return them.
+        # 解析器诊断可能包含输入连接串，不得返回给调用方，以免泄露数据库密码。
         return False
 
 
+# 要求合法桶名及明确前缀，避免生产原件区域指向整个桶根目录。
 def _s3(value):
     if not isinstance(value, str) or not _url(value, ('s3',)):
         return False
@@ -46,20 +51,23 @@ def _s3(value):
                 and all(part not in ('', '.', '..') for part in prefix.split('/')))
 
 
+# 仅检查规定格式的环境变量引用及对应值存在，不输出秘密内容。
 def _reference(value, environ):
     return bool(isinstance(value, str) and re.fullmatch(r'V3_SECRET_[A-Z0-9_]+', value)
                 and _text(environ.get(value)))
 
 
+# 开发模式只验证模式值；生产要求身份认证、原件存储、模型配置完整且禁用引导令牌。
 def check_settings(settings, environ=None) -> dict:
-    """Return only fixed field names and booleans; never echo settings or credentials.
+    """仅返回固定字段名和布尔值，不回显配置值或凭据。
 
-    A passing result checks shape and locally available secret references only.
-    Deployment isolation, remote access and business acceptance remain unverified.
+    检查通过只说明配置格式及本地密钥引用有效。
+    部署隔离、远端访问和业务验收仍需另行验证。
     """
     environ = os.environ if environ is None else environ
     checks = {'V3_MODE': settings.mode in ('production', 'development')}
     if settings.mode != 'development':
+        # 配置独立精排地址时检查精排密钥引用，否则按模型密钥引用检查；不验证远端连通性。
         separate_reranker = bool(settings.rerank_base_url)
         checks.update({
             'V3_DATABASE_URL': _postgres(settings.database_url),
@@ -78,4 +86,5 @@ def check_settings(settings, environ=None) -> dict:
             'V3_RERANK_KEY_REF': _reference(settings.rerank_key_ref if separate_reranker else settings.model_key_ref, environ),
         })
     errors = [field for field, passed in checks.items() if not passed]
+    # 只返回固定配置项名和布尔值，不能把输入值或解析器异常中的连接密码回显出去。
     return {'passed': not errors, 'checks': checks, 'errors': errors}

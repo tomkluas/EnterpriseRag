@@ -1,3 +1,4 @@
+# 验证未知上传结果的自动对账和适配器证据核验；复用临时 worker 夹具，远端查询由模拟传输控制。
 import hashlib
 import json
 import time
@@ -15,6 +16,7 @@ class AutoReconciliationTests(unittest.IsolatedAsyncioTestCase):
     asyncSetUp = fixture.WorkerTests.asyncSetUp
     asyncTearDown = fixture.WorkerTests.asyncTearDown
 
+    # 先制造上传结果未知的持久状态；后续恢复必须查证已有远端文件，不能用重复上传掩盖回执丢失。
     async def freeze(self):
         received=self.domain.receive('t','admin',self.space,'policy.txt',b'policy')
         class Service(fixture.FakeKnowledgeService):
@@ -203,6 +205,7 @@ class AdapterReconciliationTests(unittest.IsolatedAsyncioTestCase):
                 await DifyBackend('https://kb.test','secret',client).reconcile_submission('kb',proof)
             self.assertEqual(error.exception.code,'reconciliation_original_unavailable')
 
+    # 原件下载链接属于独立信任边界；断言共享客户端的默认认证不会附带到下载请求。
     async def test_dify_original_strips_client_credentials_and_disables_default_auth(self):
         proof={**self.proof(),'upload_filename':'v3-binding-a.txt','size':6}
         auth_paths=[];original_requests=[]

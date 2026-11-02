@@ -1,3 +1,4 @@
+# 验收入口同时支持离线人工评分和显式授权后的在线压测；压测会创建会话并调用模型，报告门槛不等同于生产认证。
 """Offline human scoring and explicitly opted-in V3 SSE capacity measurements."""
 import argparse
 import asyncio
@@ -17,15 +18,18 @@ FORMATS = ('pdf', 'scanned_pdf', 'docx', 'xlsx', 'txt', 'markdown')
 CATEGORIES = ('answerable', 'unanswerable', 'conflict', 'historical', 'table', 'scan', 'multi_turn', 'permission')
 
 
+# 对规范化 JSON 求摘要，便于确认环境与验收输入一致；摘要用于比对，不替代原始证据或人工复核。
 def fingerprint(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+# 采用排序后向上取整的样本分位数，空样本返回未知，避免把没有成功请求误报为零延迟。
 def percentile(values, fraction):
     values = sorted(values)
     return values[max(0, math.ceil(len(values)*fraction)-1)] if values else None
 
 
+# 按空行划分完整 SSE 帧，首个非空 token 才计首字延迟；必须同时看到结束标志，拒绝将断流当成功。
 async def measure_sse(lines, clock=time.monotonic, expect_substrings=()):
     start = clock()
     first = None
@@ -83,6 +87,7 @@ async def measure_sse(lines, clock=time.monotonic, expect_substrings=()):
                 answer_validated=failure is None and matches and has_sources)
 
 
+# 端到端耗时包括建会话和派发请求；错误只归类，不把问题、答案或服务错误正文留进测量结果。
 async def request_once(client, space_id, question, timeout, expect_substrings=()):
     start = time.monotonic()
     try:
@@ -112,6 +117,7 @@ async def request_once(client, space_id, question, timeout, expect_substrings=()
                 answer_validated=False)
 
 
+# 成功请求用于延迟分布，失败请求仍计入成功率；时长、并发、环境与答案验证分别设门槛，不能相互抵消。
 def capacity_report(rows, *, elapsed_s, load_s, concurrency, context):
     successful = [row for row in rows if row['success']]
     first = [row['first_token_s'] for row in successful]
@@ -135,6 +141,7 @@ def capacity_report(rows, *, elapsed_s, load_s, concurrency, context):
                 limitations=['Does not certify production acceptance, stage timings, or queue backlog.'])
 
 
+# 各并发槽持续串行发请求直到统一截止时间；结束时等待在途请求，因此实际总耗时可能长于设定负载时长。
 async def run_capacity(args, context):
     # Called only after CLI write opt-in validation. No credential is written to reports.
     token = os.environ[args.token_env]
@@ -161,12 +168,14 @@ async def run_capacity(args, context):
     return report
 
 
+# 只提供结构示例，刻意不填业务确认和样本，避免复制模板即可通过验收。
 def quality_example():
     """Schema-only example, intentionally incapable of passing acceptance."""
     return dict(dataset_id='', frozen=False, frozen_at='', representative_confirmed_by='',
                 documents=[], cases=[])
 
 
+# 先校验冻结、覆盖与人工证据，再分组统计回答、拒答和权限案例；缺失格式或权限样本不能被总体均值掩盖。
 def quality_report(data):
     if not isinstance(data, dict):
         raise ValueError('quality input must be an object')
@@ -231,6 +240,7 @@ def quality_report(data):
                 limitations=['Human attestations are inputs, not independently verified facts; no model judging is performed.'])
 
 
+# 在线压测必须明确允许写入并提供目标、资料库和环境令牌；默认分支只输出未执行报告。
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)

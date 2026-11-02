@@ -1,3 +1,4 @@
+# 验证两个应用实例共享 PostgreSQL 后的撤权一致性；须显式提供隔离测试库，模型响应仍由模拟传输控制。
 """Two API instances and real PG coordination, synthetic HTTP service boundaries."""
 import asyncio
 import hashlib
@@ -18,6 +19,7 @@ from app.v3.api import create_app
 from app.v3.config import Settings
 from app.v3.db import Database
 from app.v3.domain import Domain
+from app.v3.access import stable_id
 from app.v3.models import BackendInstance,Space,Document,Version,Replica,Message
 from app.v3.knowledge.registry import BackendRegistry
 from app.v3.chat.models import ModelService
@@ -50,7 +52,8 @@ class MultiInstanceSecurityTests(unittest.IsolatedAsyncioTestCase):
                 s.get(Version,item['version_id']).state='published'
                 s.add(Replica(id='replica-'+remote,tenant_id=self.tenant,version_id=item['version_id'],
                     instance_id=self.instance,collection_id='kb',remote_id=remote,state='ready',chunks=1))
-        self.domain.grant(self.tenant,'admin',self.allowed['document_id'],['reader'],[])
+        self.reader_role=stable_id(self.tenant,'builtin:reader')
+        self.domain.set_resource_roles(self.tenant,'admin',self.allowed['document_id'],[self.reader_role],[])
         self.pending=asyncio.Event();self.release=asyncio.Event();self.sent=[];self.calls=[]
         self.mode='before_first';self.rewrites=0
         outer=self
@@ -117,10 +120,11 @@ class MultiInstanceSecurityTests(unittest.IsolatedAsyncioTestCase):
         if errors:raise errors[0]
 
     async def revoke(self):
-        response=await self.admin.post(f"/api/v3/documents/{self.allowed['document_id']}/grants",json={'readers':[],'denied':['reader']})
+        response=await self.admin.post(f"/api/v3/documents/{self.allowed['document_id']}/grants",json={'role_ids':[],'denied_role_ids':[self.reader_role],'inherit':False})
         self.assertEqual(response.status_code,200)
         return time.monotonic()
 
+    # 用事件精确暂停流并从另一实例撤权；分别覆盖首段前后，确认数据库中的权限变化能截断后续输出。
     async def stream_case(self,after_first):
         self.mode='after_first' if after_first else 'before_first'
         conversation=(await self.reader.post('/api/v3/conversations')).json()['id']
@@ -179,7 +183,7 @@ class MultiInstanceSecurityTests(unittest.IsolatedAsyncioTestCase):
             for index in range(44):
                 doc_id=uuid.uuid4().hex;version_id=uuid.uuid4().hex;remote='batch-'+str(index)
                 expected.add(remote)
-                s.add(Document(id=doc_id,tenant_id=self.tenant,space_id=self.space,owner='admin',name=remote,readers=['reader'],current_version=version_id))
+                s.add(Document(id=doc_id,tenant_id=self.tenant,space_id=self.space,owner='admin',name=remote,readers=['role:'+self.reader_role],inherit_permissions=False,current_version=version_id))
                 s.add(Version(id=version_id,tenant_id=self.tenant,document_id=doc_id,filename=remote+'.txt',
                     sha256=hashlib.sha256(b'ALLOWED_EVIDENCE').hexdigest(),object_key=hashlib.sha256(self.tenant.encode()).hexdigest()+'/'+version_id,state='published'))
                 s.add(Replica(id=uuid.uuid4().hex,tenant_id=self.tenant,version_id=version_id,instance_id=self.instance,

@@ -1,3 +1,4 @@
+# 验证原件不可覆盖与路径不能逃出存储根目录；仅操作临时本地目录，不涉及远端对象服务。
 import tempfile
 import unittest
 from app.v3.storage import OriginalStore

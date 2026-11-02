@@ -1,3 +1,4 @@
+# 验证真实回环 HTTP 告警重试，数据放入既有合成试点库的新 schema；会启动接收线程并在结束删除本轮 schema。
 """Real loopback HTTP alert delivery with synthetic data in an isolated PG schema."""
 import json
 import os
@@ -16,6 +17,7 @@ from app.v3.models import Job
 from app.v3.monitoring import monitor_once,ProcessHeartbeat
 
 
+# 接收端第一次返回 503、之后 204；同一事件重试应保持 ID，恢复事件应换 ID，已成功投递不能再次发送。
 def main():
     url=make_url(dotenv_values('v3.local')['V3_DATABASE_URL'])
     assert (url.host,url.port,url.database)==('127.0.0.1',18433,'enterpriserag_v3')

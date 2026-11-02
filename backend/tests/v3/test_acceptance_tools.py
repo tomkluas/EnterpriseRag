@@ -1,3 +1,4 @@
+# 验证验收报告和 SSE 流解析的门槛；HTTP 使用 MockTransport，输入流与临时报告均由测试构造，不连接模型服务。
 import importlib.util
 import json
 import unittest

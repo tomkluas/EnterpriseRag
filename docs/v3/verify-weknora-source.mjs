@@ -1,3 +1,4 @@
+// 静态检查调用方提供的 WeKnora 源码，不启动容器或执行上游测试；通过仅表示固定契约线索均被找到。
 // Static source-contract audit only. This does not execute WeKnora or prove runtime behavior.
 // Run: node docs/v3/verify-weknora-source.mjs --source-dir <downloaded-source> --output <report.json>
 import { readFile, writeFile } from 'node:fs/promises';
@@ -11,6 +12,7 @@ if (!args.includes('--source-dir') || !args.includes('--output')) {
 }
 const root = path.resolve(option('--source-dir'));
 const commit = 'f17ee8a8da901bd658a4cb25f40b5fd41adbfdd7';
+// 同时记录路由、范围传播、检索实现和持久化线索，便于人工跨层核对；文本命中不能替代真实权限反例。
 const rules = [
   ['retrieval_route', 'internal/router/routes_knowledge.go', /kb\.POST\("\/:id\/hybrid-search"/],
   ['upload_route', 'internal/router/routes_knowledge.go', /kb\.POST\("\/file"/],
@@ -38,6 +40,7 @@ const rules = [
   ['postgres_search_is_paradedb', 'docker-compose.yml', /image: paradedb\/paradedb:v0\.25\.11-pg17/],
   ['upstream_go_requirement', 'go.mod', /^go 1\.26\.0$/m],
 ];
+// 缓存每份源码并记录正则命中行号，使审计者能够回到固定版本的具体位置复核。
 const files = new Map();
 const checks = [];
 for (const [id, relative, regex] of rules) {
@@ -51,6 +54,7 @@ for (const [id, relative, regex] of rules) {
   checks.push({ id, status: match ? 'source_pattern_found' : 'missing', file: relative, line,
     source: `https://github.com/Tencent/WeKnora/blob/${commit}/${relative}${line ? `#L${line}` : ''}` });
 }
+// 摘要绑定实际读取的字节，帮助发现输入源码变化；目录是否来自声明提交仍由调用方保证。
 const manifest = [];
 for (const [relative] of files) {
   const bytes = await readFile(path.join(root, relative));

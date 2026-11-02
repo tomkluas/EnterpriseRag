@@ -1,3 +1,4 @@
+# 验证监控指标、心跳和告警状态；临时 SQLite 保存状态，回环 HTTP 接收端提供失败与重试响应，不向外部接收方发消息。
 import asyncio
 import json
 import tempfile
@@ -137,6 +138,7 @@ class MonitoringTests(unittest.TestCase):
             self.assertEqual(result['alert_delivery'][0]['delivery'],'delivered')
         finally:server.shutdown();server.server_close();thread.join()
 
+    # 用事件暂停第一次投递后运行第二个监控；仅一次 HTTP 请求且状态仍为发送中，才说明持久认领防止了重复投递。
     def test_simultaneous_monitors_claim_one_delivery_without_holding_business_lock(self):
         from app.v3.monitoring import monitor_once
         entered=threading.Event();release=threading.Event();calls=[]

@@ -1,3 +1,4 @@
+# 验证 PostgreSQL 特有的行锁、租约与并发提交；仅在提供 V3_TEST_DATABASE_URL 时运行，模型 HTTP 使用模拟响应。
 import asyncio
 import os
 import threading
@@ -87,6 +88,7 @@ class PostgresLockTests(unittest.IsolatedAsyncioTestCase):
             with db.engine.begin() as connection:connection.execute(text('DROP SCHEMA IF EXISTS "'+schema+'" CASCADE'))
             db.engine.dispose()
 
+    # 屏障让两个线程同时提交同一回执；最终只能成功接受一次，用真实数据库锁检验原子性。
     async def test_concurrent_reconciliation_accepts_receipt_once(self):
         from app.v3.models import Job,Replica,BackendInstance,Space,Audit
         db=Database(os.environ['V3_TEST_DATABASE_URL']);db.migrate()
@@ -144,6 +146,7 @@ class PostgresLockTests(unittest.IsolatedAsyncioTestCase):
                 release.set();await asyncio.to_thread(thread.join)
         db.engine.dispose()
 
+    # 独立线程持锁，同时运行异步计数任务；等待锁期间计数仍推进，才说明同步数据库等待未阻塞事件循环。
     async def test_waiting_advisory_lock_does_not_block_event_loop(self):
         db=Database(os.environ['V3_TEST_DATABASE_URL'])
         entered=threading.Event()

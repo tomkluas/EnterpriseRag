@@ -1,3 +1,6 @@
+# V3 维护命令入口：显式选择配置文件，再分派迁移、Worker、验收、备份恢复和对账操作。
+# 命令具有真实副作用；清理必须先规划再确认执行，恢复只允许空数据库目标。
+
 import argparse
 import asyncio
 import json
@@ -12,6 +15,7 @@ from .knowledge.registry import BackendRegistry
 from .jobs.worker import Worker
 
 
+# 解析管理命令并保持各维护流程的前置校验，不把普通 API 启动变成自动运维操作。
 def main():
     parser=argparse.ArgumentParser(description='EnterpriseRag V3 管理命令')
     parser.add_argument('--env-file',required=True,help='独立 V3 配置文件；不读取旧 .env')
@@ -31,8 +35,10 @@ def main():
     inspect=sub.add_parser('inspect-reconciliation');inspect.add_argument('--job',required=True)
     reconcile=sub.add_parser('reconcile-job');reconcile.add_argument('--job',required=True);reconcile.add_argument('--report',required=True)
     args=parser.parse_args();load_dotenv(args.env_file,override=False)
+    # 显式加载指定配置且不覆盖进程环境，部署注入的秘密优先于本地配置文件。
     settings=Settings.from_env()
     if args.command=='check-configuration':
+        # 离线配置检查在创建数据库和存储对象前执行，不把可连接或运行验收作为检查结果。
         from .preflight import check_settings
         report=check_settings(settings)
         print(json.dumps(report,ensure_ascii=False,indent=2))
@@ -44,6 +50,7 @@ def main():
             raise RuntimeError('生产 Worker 配置不完整，请按 docs/v3/production-configuration.md 修复')
     db=Database(settings.database_url)
     if args.command=='restore-bundle':
+        # 恢复入口先检查整个目标库为空，再由恢复服务校验租户和原件；不覆盖已有租户。
         from sqlalchemy import select
         from .models import Tenant
         from .recovery import restore_tenant
@@ -93,16 +100,18 @@ def main():
         domain.reconcile_job(settings.tenant_id,settings.bootstrap_user,args.job,report)
         print('对账回执已记录；未直接发布或标记索引就绪。')
     else:
+        # 在同一异步监督范围内启动任务处理、心跳与告警监控，任一长期任务异常由进程生命周期处理。
         async def work():
             from .monitoring import ProcessHeartbeat,run_monitor
             async with httpx.AsyncClient() as client:
                 registry=BackendRegistry(client);worker=Worker(domain,registry.get)
+                # 持续轮询持久任务；数据库短暂故障仅记录固定错误标签并等待，不输出配置秘密。
                 async def jobs():
                     while True:
                         try:
                             if not await worker.run_once():await asyncio.sleep(2)
                         except Exception:
-                            # Database outages must not end the worker supervisor loop.
+                            # 数据库暂时不可用时保留执行器的轮询循环，等待后续恢复。
                             import logging
                             logging.getLogger(__name__).warning('v3_worker_poll_failed')
                             await asyncio.sleep(2)

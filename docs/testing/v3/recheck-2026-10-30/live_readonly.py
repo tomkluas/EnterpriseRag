@@ -1,3 +1,4 @@
+# 依赖运行中的本地 API、既有合成试点库和真实模型接口；只读取业务状态，但会发送合成模型请求并写本地报告。
 """Read-only runtime/platform checks, synthetic cloud requests, no business writes."""
 import asyncio,json,os,hashlib
 from datetime import datetime,timezone
@@ -13,6 +14,7 @@ from app.v3.knowledge.contracts import Scope,Binding
 from app.v3.knowledge.registry import BackendRegistry
 from app.v3.chat.models import ModelService
 
+# 校验已有合成原件的哈希，再实际调用向量、检索、重排与生成；成功表示这条合成链路通过，不扩大为完整业务验收。
 async def main():
     cfg=dotenv_values('v3.local')
     for k,v in cfg.items():

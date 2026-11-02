@@ -1,3 +1,4 @@
+# 保留失败草稿和租约失效的对抗性复现；仅使用独立临时 SQLite 与模拟后端，断言描述需要维持的行为边界。
 """Independent acceptance repros. Expected behavior assertions expose current defects.
 Only unique temporary SQLite databases; no credentials, runtime writes or external calls.
 Run with PYTHONPATH=backend.
@@ -16,6 +17,7 @@ from app.v3.knowledge.contracts import Submission, BackendStatus
 
 
 class AcceptanceRepros(unittest.IsolatedAsyncioTestCase):
+    # 每例重新建库并构造已验证后端，只模拟资格和远端状态，避免历史复现影响本地运行环境。
     async def asyncSetUp(self):
         self.tmp=tempfile.TemporaryDirectory(prefix='v3-independent-')
         self.db=Database('sqlite:///'+str(Path(self.tmp.name)/'test.db'),testing=True)

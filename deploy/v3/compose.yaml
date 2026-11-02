@@ -1,11 +1,13 @@
 name: enterpriserag-v3
+# API、任务和迁移共用应用镜像，数据库健康后才启动依赖服务。
 services:
   api:
     build:
       context: ../..
       dockerfile: deploy/v3/Dockerfile
-    image: enterpriserag-v3:local
-    env_file: .env
+    image: ${V3_IMAGE:-enterpriserag-v3:local}
+    env_file: ${V3_COMPOSE_ENV_FILE:-.env}
+    # 默认只绑定宿主机回环地址，由本机入口或另配代理访问。
     ports: ["127.0.0.1:18000:18000"]
     depends_on:
       database: {condition: service_healthy}
@@ -16,22 +18,25 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+  # 后台任务同时挂载只读环境文件，供命令行配置加载器读取。
   worker:
-    image: enterpriserag-v3:local
-    env_file: .env
-    volumes: ["./.env:/run/v3.env:ro"]
+    image: ${V3_IMAGE:-enterpriserag-v3:local}
+    env_file: ${V3_COMPOSE_ENV_FILE:-.env}
+    volumes: ["${V3_COMPOSE_ENV_FILE:-./.env}:/run/v3.env:ro"]
     command: ["python", "-m", "app.v3.cli", "--env-file", "/run/v3.env", "worker"]
     depends_on:
       database: {condition: service_healthy}
     restart: unless-stopped
+  # 迁移通过专用 profile 显式运行，不随默认服务启动自动执行。
   migrate:
-    image: enterpriserag-v3:local
-    env_file: .env
-    volumes: ["./.env:/run/v3.env:ro"]
+    image: ${V3_IMAGE:-enterpriserag-v3:local}
+    env_file: ${V3_COMPOSE_ENV_FILE:-.env}
+    volumes: ["${V3_COMPOSE_ENV_FILE:-./.env}:/run/v3.env:ro"]
     command: ["python", "-m", "app.v3.cli", "--env-file", "/run/v3.env", "migrate"]
     profiles: ["migration"]
     depends_on:
       database: {condition: service_healthy}
+  # 数据库使用持久卷，密码必须显式提供，避免空密码启动。
   database:
     image: postgres:16-alpine@sha256:44c4ee9810eff91f7eab4d822642e01115b1a9eccce4bcbdde7604752d68eac6
     environment:

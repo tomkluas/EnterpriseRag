@@ -1,3 +1,4 @@
+# 验证人工对账接受回执的原子性和上下文约束；复用临时 worker 夹具，恢复不会重新上传或自动发布。
 import hashlib
 import unittest
 from app.v3.domain import DomainError
@@ -9,6 +10,7 @@ from test_worker import FakeKnowledgeService
 class ReconciliationTests(unittest.IsolatedAsyncioTestCase):
     asyncSetUp=worker_tests.WorkerTests.asyncSetUp
     asyncTearDown=worker_tests.WorkerTests.asyncTearDown
+    # 先通过 worker 生成未知结果状态及原始绑定，确保人工回执接受流程检验真实任务上下文。
     async def prepare_unknown(self):
         received=self.domain.receive('t','admin',self.space,'policy.txt',b'policy')
         with self.db.transaction('t') as s:

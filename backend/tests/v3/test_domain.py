@@ -1,3 +1,4 @@
+# 验证领域状态、租户边界和原件完整性；每例使用临时 SQLite 和对象目录，不调用真实知识平台。
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,6 +7,7 @@ from app.v3.domain import Domain, DomainError
 
 
 class DomainFixture(unittest.TestCase):
+    # 迁移临时数据库后创建租户基础状态；派生测试共享准备方式，但不共享同一份测试数据。
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.db = Database('sqlite:///' + str(Path(self.temp.name) / 'test.db'), testing=True)
@@ -21,6 +23,57 @@ class DomainFixture(unittest.TestCase):
 
 
 class DomainTests(DomainFixture):
+    def test_chat_metadata_upgrade_preserves_existing_records_and_is_repeatable(self):
+        from sqlalchemy import text,inspect
+        conv=self.domain.create_conversation('t1','admin')
+        with self.db.engine.begin() as c:
+            c.execute(text('ALTER TABLE v3_conversations DROP COLUMN archived'))
+            c.execute(text('ALTER TABLE v3_messages DROP COLUMN space_id'))
+        self.db.migrate();self.db.migrate()
+        self.assertIn('space_id',{c['name'] for c in inspect(self.db.engine).get_columns('v3_messages')})
+        self.assertEqual(self.domain.conversations('t1','admin')[0]['id'],conv)
+        self.assertFalse(self.domain.conversations('t1','admin')[0]['archived'])
+
+    def test_job_list_includes_file_and_target_index_result_without_cross_tenant_data(self):
+        from app.v3.models import Job,Replica
+        received=self.domain.receive('t1','admin',self.space,'差旅制度.txt',b'policy')
+        first=self.domain.register_backend('t1','admin','weknora','https://wk.test','V3_SECRET_TEST')
+        second=self.domain.register_backend('t1','admin','dify','https://dify.test','V3_SECRET_TEST')
+        with self.db.transaction('t1') as s:
+            job=s.get(Job,received['job_id']);job.state='completed'
+            job.payload={**job.payload,'instance_id':first}
+            s.add_all([
+                Replica(id='wk',tenant_id='t1',version_id=received['version_id'],instance_id=first,state='ready',chunks=8),
+                Replica(id='dify',tenant_id='t1',version_id=received['version_id'],instance_id=second,state='ready',chunks=13),
+                Replica(id='foreign',tenant_id='t2',version_id=received['version_id'],instance_id=first,state='ready',chunks=999),
+            ])
+        job=self.domain.list_jobs('t1','admin')[0]
+        self.assertEqual(job['file']['filename'],'差旅制度.txt')
+        self.assertEqual(job['file']['space_name'],'人事制度')
+        self.assertEqual([r['chunks'] for r in job['index_results']],[8])
+        self.assertEqual(job['index_results'][0]['provider'],'weknora')
+        self.assertNotIn('object_key',job['file'])
+        self.assertEqual(self.domain.list_jobs('t2','other'),[])
+        self.domain.add_user('t1','admin','reader')
+        with self.assertRaises(DomainError) as error:self.domain.list_jobs('t1','reader')
+        self.assertEqual(error.exception.status,403)
+
+    def test_pending_delete_and_maintenance_jobs_have_honest_results(self):
+        from app.v3.models import Job,Replica
+        received=self.domain.receive('t1','admin',self.space,'pending.txt',b'pending')
+        backend=self.domain.register_backend('t1','admin','weknora','https://wk.test','V3_SECRET_TEST')
+        with self.db.transaction('t1') as s:
+            s.add(Replica(id='pending',tenant_id='t1',version_id=received['version_id'],instance_id=backend,state='backend_processing'))
+            s.add(Job(id='cleanup',tenant_id='t1',owner='admin',kind='delete',state='failed',idempotency_key='cleanup',payload={'document_id':received['document_id']}))
+            s.add(Job(id='maintenance',tenant_id='t1',owner='admin',kind='orphan_gc',state='failed',idempotency_key='maintenance',payload={}))
+        jobs={j['id']:j for j in self.domain.list_jobs('t1','admin')}
+        self.assertIsNone(jobs[received['job_id']]['index_results'][0]['chunks'])
+        self.assertEqual(jobs['cleanup']['file']['filename'],'pending.txt')
+        self.assertTrue(jobs['cleanup']['can_retry'])
+        self.assertIsNone(jobs['maintenance']['file'])
+        self.assertEqual(jobs['maintenance']['index_results'],[])
+        self.assertFalse(jobs['maintenance']['can_retry'])
+
     def test_office_formats_require_actual_provider_probe_and_pilot_cannot_claim_pages(self):
         self.domain.development=True
         backend=self.domain.register_backend('t1','admin','weknora','https://kb.test','V3_SECRET_TEST')
@@ -116,6 +169,8 @@ class DomainTests(DomainFixture):
 
     def test_admin_role_alone_does_not_grant_document_read(self):
         received = self.domain.receive('t1','admin',self.space,'a.txt',b'policy')
+        role=self.domain.save_role('t1','admin','独立资料范围',permissions=['knowledge.read'])
+        self.domain.set_resource_roles('t1','admin',received['document_id'],[role['id']],[])
         self.domain.add_user('t1','admin','second','admin')
         self.assertFalse(self.domain.can_read('t1','second',received['document_id']))
 
@@ -130,7 +185,8 @@ class DomainTests(DomainFixture):
         self.domain.grant('t1','admin',received['document_id'],['reader'],[])
         with self.assertRaises(DomainError):
             self.domain.read_original('t1','reader',received['document_id'],received['version_id'])
-        self.assertEqual(self.domain.list_documents('t1','reader',self.space),[])
+        with self.assertRaises(DomainError) as error:self.domain.list_documents('t1','reader',self.space)
+        self.assertEqual(error.exception.status,403)
 
     def test_document_grantee_can_discover_space_with_published_documents(self):
         from app.v3.models import Document, Version

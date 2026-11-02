@@ -1,3 +1,4 @@
+# 验证企业签名身份与数据库角色的组合；临时生成 RSA 密钥并模拟 JWKS 响应，不访问真实身份提供方。
 import json
 import tempfile
 import time
@@ -15,6 +16,7 @@ from app.v3.domain import Domain,DomainError
 
 
 class EnterpriseAuthTests(unittest.IsolatedAsyncioTestCase):
+    # 使用本轮生成的公钥构造 JWKS；令牌声称的角色不能覆盖库内角色，签名有效也不代表授权通过。
     async def asyncSetUp(self):
         self.temp=tempfile.TemporaryDirectory();self.db=Database('sqlite:///'+str(Path(self.temp.name)/'test.db'),testing=True)
         self.db.migrate();self.domain=Domain(self.db,Path(self.temp.name)/'objects');self.domain.bootstrap('t','admin')

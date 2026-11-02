@@ -1,3 +1,4 @@
+# 依赖本地 Dify 和仓库外凭据，读取范围化权限并尝试上传合成文件；报告仅记录协议诊断，不代表完整验收。
 """Protocol probe on an isolated Dify 1.18 instance. Never a G0 sign-off.
 
 Uses synthetic economy-indexed data to diagnose file upload before model setup.
@@ -10,6 +11,7 @@ from pathlib import Path
 import httpx
 
 
+# 先检查数据集可读与密钥不能列出全工作区，再探测文件上传；局部接口通过不会被报告为完整 G0。
 def main(args):
     auth=json.loads((Path(args.runtime_dir)/'dify-test-auth.json').read_text(encoding='utf-8-sig'))
     dataset=auth['dataset']['id'];checks=[]

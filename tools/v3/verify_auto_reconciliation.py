@@ -1,3 +1,4 @@
+# 依赖既有合成试点的真实丢回执演练；新增独立 schema 和临时原件，上传真实合成文件，清理仅依据本轮确知的回执。
 """Real lost-receipt probe in a fresh schema of the existing synthetic pilot DB.
 
 Never changes platform keys, runtime qualification, existing tenant routing, or data.
@@ -26,10 +27,12 @@ from app.v3.knowledge.registry import BackendRegistry
 from app.v3.models import BackendInstance, Job, Replica, Space
 
 
+# 只输出固定阶段标记，方便长时间远端检查定位进度，不把上传内容或密钥带入日志。
 def stage(value):
     print(json.dumps({'stage':value},ensure_ascii=False),flush=True)
 
 
+# 把回执找回与索引就绪拆成两个指标；只有 ready、正分块数和任务完成同时成立才算索引完成。
 def normalize_check(check,deadline_exceeded=False):
     # Older probe snapshots captured the durable state before adding explicit
     # receipt/readiness metrics. backend_processing after the injected unknown
@@ -43,6 +46,7 @@ def normalize_check(check,deadline_exceeded=False):
     return check
 
 
+# 只在包装层丢弃真实成功回执并返回未知超时，禁止二次上传；恢复必须依靠平台查证及原件哈希。
 async def run(args):
     started=time.monotonic()
     config=dotenv_values(args.env_file)

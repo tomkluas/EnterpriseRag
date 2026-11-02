@@ -7,6 +7,8 @@ __pycache__/
 .venv-v3/
 data-v3/
 deploy/v3/.env
+deploy/dev/.env
+deploy/dev/.weknora-setup.*
 *.local
 node_modules/
 

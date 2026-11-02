@@ -1,3 +1,4 @@
+// 只读取调用方提供的源码目录并写审计报告，不启动 Dify、不访问平台 API；源码版本真实性仍须调用方核实。
 // Static contract presence checks, not runtime integration or security tests.
 // node docs/v3/verify-dify-source.mjs --source-dir <source> --output <report.json>
 import { readFile, writeFile } from 'node:fs/promises';
@@ -8,6 +9,7 @@ if (!args.includes('--source-dir') || !args.includes('--output')) throw new Erro
 const option = key => args[args.indexOf(key) + 1];
 const root = path.resolve(option('--source-dir'));
 const commit = '50abea97062110044f15d0e03ccecadd9ccc87ca';
+// 固定版本的路径与正则用于定位契约线索；命中只证明文本存在，不能证明运行时授权或检索质量正确。
 const rules = [
   ['retrieve_route', 'api/controllers/service_api/dataset/hit_testing.py', /@service_api_ns.route\("\/datasets\/<uuid:dataset_id>\/retrieve"\)/],
   ['upload_route', 'api/controllers/service_api/dataset/document.py', /\/document\/create-by-file/],
@@ -26,6 +28,7 @@ const rules = [
   ['response_document_id', 'api/fields/hit_testing_fields.py', /document_id: str/],
   ['response_segment_position', 'api/fields/hit_testing_fields.py', /position: int/],
 ];
+// 同一文件只读一次，并保存命中行号供人工沿调用链复核，不能把单个正则当作完整逻辑验证。
 const files = new Map();
 const checks = [];
 for (const [id, file, pattern] of rules) {
@@ -36,6 +39,7 @@ for (const [id, file, pattern] of rules) {
   checks.push({id, file, line, status: match ? 'source_pattern_found' : 'missing',
     source: `https://github.com/langgenius/dify/blob/${commit}/${file}${line ? `#L${line}` : ''}`});
 }
+// 将实际读取文件的字节摘要写入清单，便于复核报告对应的源码内容；它不代替版本来源校验。
 const manifest = [];
 for (const file of files.keys()) manifest.push({file, sha256:createHash('sha256').update(await readFile(path.join(root,file))).digest('hex')});
 const report = {schema_version:1, audited_at:new Date().toISOString(), upstream:'https://github.com/langgenius/dify',

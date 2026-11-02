@@ -1,3 +1,4 @@
+# 依赖本地 WeKnora 与确定性模型替身，上传正反合成样本验证检索范围；不据此认可真实模型效果或生产 G0。
 """Real WeKnora HTTP/storage probe with synthetic documents and fixture embeddings.
 
 Not a production G0 sign-off. It deliberately leaves real-model quality not_run.
@@ -12,6 +13,7 @@ from app.v3.knowledge.weknora import WeKnoraBackend
 from app.v3.knowledge.contracts import Binding, Scope
 
 
+# 每种检索路径先验证合成文档能被正向召回，再限制为授权文档；避免无结果掩盖范围过滤失效。
 async def main(args):
     root=Path(args.runtime_dir);key=json.loads((root/'weknora-scoped-key.json').read_text(encoding='utf-8-sig'))['data']['api_key']
     collection=json.loads((root/'weknora-fixture-kb.json').read_text(encoding='utf-8-sig'))['data']['id']
